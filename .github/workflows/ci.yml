@@ -27,11 +27,13 @@ jobs:
         with:
           node-version: "20"
       - name: Install the fixture builders
-        # Pillow writes the test images; fontTools is what the typeface gate
-        # reads the shipped woff2 with. The app itself needs no Python.
+        # Pillow writes the test images; fontTools reads the shipped woff2 for
+        # the typeface gate, and the [woff] extra is what brings brotli, which
+        # is the codec a woff2 is actually compressed with. The app itself
+        # needs no Python.
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pillow fonttools
+          python -m pip install pillow "fonttools[woff]"
       - name: Install the browser harness
         working-directory: tests/web
         run: npm ci
@@ -146,7 +148,7 @@ jobs:
       - name: Install the fixture builders
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pillow fonttools
+          python -m pip install pillow "fonttools[woff]"
       - run: python tools/gen_seo_pages.py --check
 
   lint:
