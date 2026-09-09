@@ -23,7 +23,7 @@ import {
 } from "./settings.js";
 import {
   startEngine, dispatch, requeue, removeItems, cancelAll, setBatchEndHandler, pool,
-  readingCount, readingPeakSeen, poolPlan,
+  readingCount, readingPeakSeen, poolPlan, backgroundPlan,
   holdWork, warmCodecs, warmAvif,
 } from "./engine.js";
 import { addFiles, filesFromDataTransfer, countItemWords } from "./intake.js";
@@ -499,6 +499,7 @@ function bindKeys() {
  */
 window.imgc = {
   state, pool, dispatch, scheduleRender, renderNow, toast, human, readingCount, readingPeakSeen, poolPlan,
+  backgroundPlan,
   chooseCandidate, currentSettings, select: pick,
   // Zoom geometry, for the probe that asserts the frame stays centred.
   zoom: getZoom, pan: getPan, setView, mode: getMode, setMode, applyZoom, resetZoom,

@@ -76,6 +76,60 @@ export const poolPlan = () => ({
 
 let batchActive = false;
 let onBatchEnd = null;
+
+/* ------------------------- yielding a hidden tab ------------------------- *
+ *
+ * A dedicated worker is not throttled by the browser when the tab goes to the
+ * background - which is what makes a batch survive a tab switch, and is right.
+ * But it also means six cores stay pinned while the person is doing something
+ * else, and the machine they switched TO is the one they are now looking at:
+ * the call that stutters, the fans that come up, the laptop that gets hot.
+ *
+ * Backing off the moment a tab hides would be wrong too. Most tab switches are
+ * seconds long - checking a link, pasting something - and a batch that halves
+ * its throughput every time someone glances away finishes noticeably later for
+ * no benefit anyone asked for.
+ *
+ * So: full speed for a grace period, then ease off. Coming back is immediate,
+ * and the grace timer is cancelled by the return, so a quick look away costs
+ * nothing at all.
+ *
+ * Easing off narrows how many workers are FED, never how many are running: an
+ * encode already in flight is left alone. Terminating it would throw away the
+ * seconds it has already spent, which is the opposite of being cheap. The pool
+ * therefore drains to the background width on its own, as jobs finish. */
+const BACKGROUND_GRACE_MS = 20_000;
+const BACKGROUND_WORKERS = 2;
+
+let easedOff = false;
+let graceTimer = 0;
+
+/** How many workers may be fed right now. */
+function activeWidth() {
+  return easedOff ? Math.min(BACKGROUND_WORKERS, POOL_MAX) : POOL_MAX;
+}
+
+/* Exported for the harness: a gate that cannot see this cannot tell a batch
+ * that eased off from one that simply got slower. */
+export const backgroundPlan = () => ({
+  hidden: typeof document !== "undefined" && document.hidden,
+  easedOff, width: activeWidth(), graceMs: BACKGROUND_GRACE_MS,
+});
+
+if (typeof document !== "undefined") {
+  document.addEventListener("visibilitychange", () => {
+    clearTimeout(graceTimer);
+    if (document.hidden) {
+      /* Only worth arming while there is something to ease off from. */
+      graceTimer = setTimeout(() => {
+        easedOff = true;
+      }, BACKGROUND_GRACE_MS);
+    } else if (easedOff) {
+      easedOff = false;
+      dispatch();          // the width just went back up; fill it now
+    }
+  });
+}
 /* How many file reads are in flight, and whether a dispatch is already walking
  * the queue. Both module-level on purpose - see dispatch. */
 let reading = 0;
@@ -264,6 +318,13 @@ async function walkQueue() {
   }
 
   for (const item of queued) {
+    /* While eased off, only the first few slots are fed. Jobs already running
+       in the slots above are left to finish - the pool narrows by draining,
+       not by throwing work away. */
+    const width = activeWidth();
+    const busyNow = pool.reduce((n, s) => n + (s.busy ? 1 : 0), 0);
+    if (busyNow >= width) return;   // a finishing worker calls back
+
     // Prefer the worker that last handled this item - its decode cache makes a
     // quality-only re-run start instantly.
     let slot = item.slot != null && pool[item.slot] && !pool[item.slot].busy
