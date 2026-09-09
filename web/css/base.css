@@ -104,7 +104,7 @@
      disagree with it. The fallback is a system serif stack, so a blocked or
      slow face lands on a serif rather than snapping to a sans - the page keeps
      its voice either way. */
-  --font-ui: 'Caveat', ui-serif, Georgia, 'Times New Roman', serif;
+  --font-ui: 'Instrument Serif', ui-serif, Georgia, 'Times New Roman', serif;
 
   /* How much bigger this face has to be set to READ the size it is nominally
      at. Fonts are specified in px but perceived by x-height, and the two come
@@ -123,7 +123,7 @@
      The figures do NOT scale with it. Geist Mono is set at the size it was
      chosen at, and a scale meant for a handwriting face would blow the
      tabular columns apart. */
-  --type-scale: 1.3;
+  --type-scale: 1.02;
   --font-num: 'Geist Mono', ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
   --font-display: var(--font-ui);
 

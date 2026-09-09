@@ -156,19 +156,29 @@ def fetch(url: str) -> bytes:
 
 
 def google_css(family: str, axes: str | None) -> str:
-    """The @font-face CSS Google serves for a family, as a modern browser."""
+    """The @font-face CSS Google serves for a family, as a modern browser.
+
+    A weight RANGE is only a valid request for a family that actually carries a
+    wght axis. Asking a single-weight face like Instrument Serif for 400..600 is
+    a 400 from the API, not a font with one weight - so the range is an attempt,
+    and the plain request is what a static family answers.
+    """
     spec = family.replace(" ", "+")
     # No axes given: ask for the weight range this app renders, variable.
     tail = axes if axes else "wght@400..600"
-    url = f"https://fonts.googleapis.com/css2?family={spec}:{tail}&display=swap"
-    try:
-        return fetch(url).decode("utf-8")
-    except urllib.error.HTTPError as exc:
-        raise SystemExit(
-            f"Google Fonts has no '{family}' with those axes ({exc.code}).\n"
-            f"  tried: {url}\n"
-            f"  check the spelling, or pass --axes matching what the family has."
-        ) from exc
+    attempts = [f"https://fonts.googleapis.com/css2?family={spec}:{tail}&display=swap"]
+    if not axes:
+        attempts.append(f"https://fonts.googleapis.com/css2?family={spec}&display=swap")
+    for url in attempts:
+        try:
+            return fetch(url).decode("utf-8")
+        except urllib.error.HTTPError as exc:
+            last = exc
+    raise SystemExit(
+        f"Google Fonts has no '{family}' with those axes ({last.code}).\n"
+        f"  tried: {chr(10).join('    ' + u for u in attempts)}\n"
+        f"  check the spelling, or pass --axes matching what the family has."
+    ) from last
 
 
 def subset_urls(css: str) -> dict[str, str]:
