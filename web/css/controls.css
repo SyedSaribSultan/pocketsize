@@ -74,7 +74,7 @@
   box-shadow: 0 1px 0 -1px var(--c-chrome-shadow);
 }
 
-.btn.sm { padding: var(--s-1) var(--s-2); font-size: calc(14px * var(--type-scale)); }
+.btn.sm { padding: var(--s-1) var(--s-2); font-size: calc(16px * var(--type-scale)); }
 .btn.sm > svg { width: 14px; height: 14px; }
 
 /* No border, no fill - for actions that sit inside something already framed. */
@@ -137,10 +137,25 @@ select {
 /* Out of sight, out of the accessibility tree, still in the layout's flow at
    zero size so it stays focusable and label-associable. clip-path rather than
    display:none, which would make the element unfocusable and break the
-   fallback this component's safety rests on. */
+   fallback this component's safety rests on.
+
+   `min-width` is in this list because of what it costs when it is not. The
+   sizing rules below name their selects by id (#shrink-mode), and an id beats
+   this class - so the HIDDEN select kept an 11ch minimum and went on claiming
+   93px of a flex row it is not supposed to occupy at all. What that width
+   pushed off the end of the row was the "px" after the number, onto a line of
+   its own, away from the value it belongs to. It looked like a row that needed
+   a wider sidebar; no width fixed it, because the space was being taken by an
+   element nobody could see.
+
+   !important, which is otherwise not used in this file: this is not a
+   preference competing with other preferences, it is the invariant that an
+   invisible control occupies no space. Anything that outranks it is wrong by
+   construction. */
 .picker-native {
   position: absolute;
   width: 1px;
+  min-width: 0 !important;
   height: 1px;
   padding: 0;
   margin: -1px;
@@ -294,10 +309,19 @@ select {
   min-width: 0;
 }
 /* Wide enough that its shortest option reads whole when selected; the longer
-   "never" option may ellipsise, and the sentence under the plan restates it. */
+   "never" option may ellipsise, and the sentence under the plan restates it.
+
+   10ch, because that is what "to at most" is: ten characters. The eleventh was
+   slack, and slack in a minimum is not free here - the mode, the number and
+   its unit share one row, and at 11ch they asked for nine pixels more than the
+   row has, which put "px" on a line of its own away from the number it
+   belongs to. */
 #shrink-mode,
-#shrink-field .pair > .picker { flex: 1 1 auto; min-width: 11ch; }
+#shrink-field .pair > .picker { flex: 1 1 auto; min-width: 10ch; }
 .field .pair > * { min-width: 0; }
+/* ...except the number, which sets its own floor below: a value nobody
+   can read whole is worse than a row that wraps. */
+.field .pair .valued > input[type="number"] { min-width: 9ch; }
 .field .pair > select,
 .field .pair > .picker { flex: 1; }
 /* Wide enough for four digits AND the spinner, whatever face is set.
@@ -315,7 +339,7 @@ select {
    tests/web/probe_widths.mjs measures scrollWidth against clientWidth on every
    field with a value, at every viewport, so the next face that does not fit
    says so rather than silently truncating a number someone is relying on. */
-.field .pair > input[type="number"] {
+.field .pair input[type="number"] {
   flex: 0 0 auto;
   /* 4ch of digits plus the room the control needs around them. The spinner and
      the padding do not scale with the type, but the FONT SIZE they sit beside
@@ -354,7 +378,24 @@ select {
 
 /* A static unit beside a number, not a control - so it is never focusable and
    never looks like something to click. */
-.field .pair > .unit { flex: none; color: var(--c-ink-3); align-self: center; }
+.unit { flex: none; color: var(--c-ink-3); align-self: center; }
+
+/* A number and its unit, bound into ONE flex item.
+   The row they sit in is allowed to wrap, and while they were two loose items
+   it wrapped BETWEEN them: "px" on a line of its own, under the field, away
+   from the number it measures. A value and its unit are one thing and now
+   travel as one. The pair still wraps as a whole when the column is too
+   narrow, which is what that rule wanted. */
+.field .pair > .valued {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  /* Never shrunk. It holds a number someone is reading, and the width below is
+     already the smallest that shows one whole - squeezing it here clipped
+     "2560" to "256", which is the same class of bug the input's own comment
+     records twice. The row wraps instead. */
+  flex: 0 0 auto;
+}
 
 /* Wins over `.field > label` on specificity, deliberately: a checkbox's label is
    the whole row, not the 92px question column, and inheriting that basis broke
@@ -372,7 +413,7 @@ select {
    it. It is a readout and never a control, so it is never focusable. */
 .plan-why {
   color: var(--c-ink-3);
-  font-size: calc(14px * var(--type-scale));
+  font-size: calc(16px * var(--type-scale));
   padding-top: var(--s-2);
 }
 
@@ -431,6 +472,12 @@ select {
      clears the floor and the box itself just gets big enough to read. */
   label.check { min-height: var(--s-target); }
   .check input { width: 20px; height: 20px; }
+
+  /* On a narrow screen the question goes above its controls rather than beside
+     them. It is the same total width either way, but as its own line the label
+     stops competing with the mode, the number and the unit for one row - which
+     is what was pushing "px" off the end on a phone. */
+  .field > label { flex: 1 0 100%; }
 }
 
 /* ------------------------------- segmented ------------------------------- */
@@ -522,7 +569,7 @@ select {
   border-radius: 999px;
   background: var(--c-accent);
   color: var(--c-accent-ink);
-  font-size: calc(18px * var(--type-scale));
+  font-size: calc(20px * var(--type-scale));
   font-weight: 600;
   box-shadow: var(--elev-3);
   pointer-events: none;

@@ -28,7 +28,7 @@
 @font-face {
   font-family: 'Instrument Serif';
   font-style: normal;
-  font-weight: 400 600;
+  font-weight: 400;
   font-display: swap;
   src: url('/fonts/instrument-serif-latin.woff2') format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
@@ -38,7 +38,7 @@
 @font-face {
   font-family: 'Instrument Serif';
   font-style: normal;
-  font-weight: 400 600;
+  font-weight: 400;
   font-display: swap;
   src: url('/fonts/instrument-serif-latin-ext.woff2') format('woff2');
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,

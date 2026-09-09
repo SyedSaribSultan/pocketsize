@@ -278,12 +278,38 @@ def build_face(family: str, axes: str | None) -> dict[str, int]:
     return written
 
 
+def weight_range(path: Path) -> str:
+    """The weights this FILE can actually draw, as a `font-weight` value.
+
+    Declaring a range the file does not have is not a harmless overstatement.
+    The browser believes the declaration, finds no master at 600, and
+    synthesises one by smearing the 400 outline; in a serif at body size that
+    reads as muddy rather than heavier, and nothing on the page says why. This
+    shipped for a while under Instrument Serif, which has exactly one weight
+    while the sheet claimed `400 600`.
+
+    A variable font reports its wght axis. A static one has exactly the weight
+    in its OS/2 table and must say so.
+    """
+    from fontTools.ttLib import TTFont  # noqa: PLC0415 - optional dep
+
+    font = TTFont(path)
+    fvar = font.get("fvar")
+    if fvar:
+        for axis in fvar.axes:
+            if axis.axisTag == "wght":
+                ceiling = int(WEIGHT_RANGE.split()[-1])
+                lo, hi = max(int(axis.minValue), 400), min(int(axis.maxValue), ceiling)
+                return f"{lo} {hi}" if hi > lo else str(lo)
+    return str(font["OS/2"].usWeightClass)
+
+
 def face_block(family: str, subset: str) -> str:
     return (
         "@font-face {\n"
         f"  font-family: '{family}';\n"
         "  font-style: normal;\n"
-        f"  font-weight: {WEIGHT_RANGE};\n"
+        f"  font-weight: {weight_range(FONT_DIR / f'{slug(family)}-{subset}.woff2')};\n"
         "  font-display: swap;\n"
         f"  src: url('/fonts/{slug(family)}-{subset}.woff2') format('woff2');\n"
         f"  unicode-range: {SUBSETS[subset]};\n"

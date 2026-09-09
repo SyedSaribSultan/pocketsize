@@ -186,7 +186,7 @@ body {
   margin: 0;
   background: var(--c-bg);
   color: var(--c-ink);
-  font: calc(16px * var(--type-scale))/1.5 var(--font-ui);
+  font: calc(18px * var(--type-scale))/1.5 var(--font-ui);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -221,7 +221,7 @@ b, strong, th { font-weight: 600; }
 /* Section labels. Small and quiet: the data is the content, not its name.
    13px is the floor for uppercase micro-labels, and this is the floor. */
 h2, h3 {
-  font-size: calc(13px * var(--type-scale));
+  font-size: calc(15px * var(--type-scale));
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;

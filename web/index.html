@@ -279,8 +279,15 @@
             <!-- The datalist offers the landmark sizes without adding a
                  control: recognition for the common cases, a free number for
                  the rest. -->
-            <input type="number" id="maxdim" min="16" step="64" value="2560"
-                   list="dim-presets" aria-label="Pixel limit">
+            <!-- The number and its unit are one value, so they are one flex
+                 item. Loose in the row they were separable, and the row wraps:
+                 "px" landed on a line of its own, under the field, away from
+                 the number it measures. -->
+            <span class="valued">
+              <input type="number" id="maxdim" min="16" step="64" value="2560"
+                     list="dim-presets" aria-label="Pixel limit">
+              <span class="unit" id="maxdim-unit">px</span>
+            </span>
             <datalist id="dim-presets">
               <option value="1024"></option>
               <option value="1920"></option>
@@ -288,7 +295,6 @@
               <option value="2560"></option>
               <option value="4096"></option>
             </datalist>
-            <span class="unit" id="maxdim-unit">px</span>
           </div>
         </div>
         <p class="plan-why" id="shrink-note" hidden></p>
