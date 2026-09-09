@@ -117,6 +117,20 @@ function build(sel) {
 
   /* ------------------------------ rendering ------------------------------ */
 
+  /* Rows are updated in place, never replaced wholesale.
+   *
+   * refreshPickers runs from reflectPlan, and reflectPlan runs on every worker
+   * `caps` and `done` message - so during a batch this is called repeatedly
+   * while the menu may be open under someone's cursor. replaceChildren there
+   * destroyed the row being pointed at: the highlight went out (the element
+   * carrying .is-active no longer existed), :hover stopped matching until the
+   * mouse moved again, and aria-activedescendant went on naming a node that had
+   * been removed from the document. To a person that reads as a menu that
+   * randomly forgets what you were doing.
+   *
+   * Reconciling instead means the row under the cursor is the same element
+   * before and after, so hover, the active ring and the accessible pointer all
+   * survive a repaint. */
   ctl.paint = () => {
     ctl.options = readOptions(sel);
     const current = sel.selectedOptions[0];
@@ -124,18 +138,39 @@ function build(sel) {
     button.title = current ? (current.title || current.textContent.trim()) : "";
     button.disabled = sel.disabled;
 
-    list.replaceChildren(...ctl.options.map((o, i) => {
-      const item = document.createElement("div");
-      item.className = "picker-opt";
-      item.id = `${sel.id}-opt-${i}`;
-      item.setAttribute("role", "option");
-      item.setAttribute("aria-selected", String(o.value === sel.value));
+    const rows = [...list.children];
+    ctl.options.forEach((o, i) => {
+      let item = rows[i];
+      if (!item) {
+        item = document.createElement("div");
+        item.className = "picker-opt";
+        item.setAttribute("role", "option");
+        list.append(item);
+      }
+      const id = `${sel.id}-opt-${i}`;
+      if (item.id !== id) item.id = id;
+      const selected = String(o.value === sel.value);
+      if (item.getAttribute("aria-selected") !== selected) {
+        item.setAttribute("aria-selected", selected);
+      }
       if (o.disabled) item.setAttribute("aria-disabled", "true");
-      item.dataset.value = o.value;
-      if (o.title) item.title = o.title;
-      item.textContent = o.label;
-      return item;
-    }));
+      else item.removeAttribute("aria-disabled");
+      if (item.dataset.value !== o.value) item.dataset.value = o.value;
+      const title = o.title || "";
+      if (item.title !== title) item.title = title;
+      if (item.textContent !== o.label) item.textContent = o.label;
+    });
+    for (let i = list.children.length - 1; i >= ctl.options.length; i--) {
+      list.children[i].remove();
+    }
+
+    /* The list is shorter than it was and the highlight fell off the end. It
+       has to land somewhere real, or Enter would commit against a stale index.
+       Only while open: before that there is no highlight to rescue, and the
+       first paint runs during build, before setActive exists. */
+    if (openPicker === ctl && ctl.active >= ctl.options.length) {
+      setActive(ctl.options.length - 1);
+    }
   };
 
   const setActive = (i) => {
@@ -306,6 +341,9 @@ function build(sel) {
   list.addEventListener("mousedown", (e) => e.preventDefault());
   list.addEventListener("mouseover", (e) => {
     const item = e.target.closest(".picker-opt");
+    /* An option the engine would refuse takes the highlight like any other -
+       it is readable, and its own label says why it cannot be picked. Skipping
+       it would make the cursor appear to stick. */
     if (item) setActive([...list.children].indexOf(item));
   });
   list.addEventListener("click", (e) => {
