@@ -1,542 +1,84 @@
 # Guide to this repository
 
-About 3,400 lines total, six source files that matter. Here's the tour.
+The product is a web page. Everything here runs in the browser, on the reader's
+own machine - there is no server, no account and no upload path.
 
 ## The mental model
 
-Everything follows one rule: **never assume quality, measure it.** The tool
+Everything follows one rule: **never assume quality, measure it.** The app
 encodes an image several different ways, decodes each result back, scores it
 against the original, and keeps the smallest file that still clears your quality
 floor. Every design decision falls out of that.
 
 The second rule follows from the first: **the best format is content-dependent.**
 A photograph wants JPEG, a screenshot wants palette PNG, a smooth gradient wants
-lossless PNG. So the tool doesn't pick — it tries them all and keeps the winner.
+lossless PNG. So the app doesn't pick - it tries them all and keeps the winner.
 
-Video, added later, is that same rule with time in it. Nothing about the model
-changes; what changes is that you cannot afford to encode the whole file to find
-out what a setting does, and that a per-frame metric cannot see time. Both show
-up in the shape of `video.py` below.
-
-## The six files that matter
-
-### `pocketsize/destinations.py` — "where is this going?"
-
-Seven offered entries — `web` (the default), `documents`, `email`, `chat`,
-`social`, `thumbnail`, `original` — each naming the formats it may write, how
-large the frame may be, and how close the result has to look; plus one hidden
-entry, `lossless`, which backs the "identical — every pixel kept" choice in the
-UIs and `--lossless` on the CLI (pixel-exact formats only, never resized). It is
-deliberately the smallest file here and imports nothing from the rest of the
-package, because three other engines mirror it and a table with logic in it is
-a table that cannot be mirrored.
-
-A video answers the same question an image does, so video lives in the same
-table rather than a parallel one — as extra fields on the same rows:
-`video_formats` (codec+container pairs, best-first), `video_max_dimension`,
-`video_target`, `size_cap_mb` and `audio`. The numbers differ from the image
-ones because the right answers differ: 2560px is a sensible photograph for a
-website and a needlessly expensive video for one. An empty `video_formats` is
-the honest way to say "this is a place to send a picture" — `thumbnail` has one,
-and a video sent there is reported and left alone rather than guessed at.
-
-`size_cap_mb` is the field images never needed. An image destination is defined
-by where it is going; a video destination is usually defined by a number
-somebody else chose — Discord's 10 MB, a mail server's 25 — and missing it by a
-byte means the file is refused. That is also why `email` and `chat` are two
-rows: they are one destination for a picture and two for a video, because the
-two numbers come from different companies.
-
-A destination is the one question a person can answer without knowing anything
-about compression. Before 2.7 there were two overlapping ideas — `--preset` set
-size and quality, `--target` set the format list — and both defaulted to
-`figma`, so someone compressing a photograph for their website silently got no
-WebP for a reason about design tools.
-
-`hard_cap` is the only conditional behaviour: `documents` enforces 4096px even
-when asked for more. Aliases keep `figma` and `archive` working.
-
-### `pocketsize/quality.py` — "how good does this look?"
-
-Two metrics behind one interface:
-
-* **SSIMULACRA 2** (default). XYB colour space, multi-scale, sees chroma.
-  Correlates with human judgement at r≈0.88. Scale runs to 100; 90 is
-  "visually lossless".
-* **SSIM** (fallback). numpy-only, roughly 5× faster, luminance only — so it is
-  structurally blind to chroma damage. Aggregated at the 5th percentile rather
-  than the mean, so a large flat background can't hide a damaged subject.
-
-Two things here are subtle and worth not breaking:
-
-* `score_sampled()` scores a grid of **native-resolution tiles** rather than the
-  whole frame during the search. Never a downscaled copy — compression artefacts
-  live at full resolution, so shrinking the image hides exactly what you're
-  looking for. Measured drift versus the full-frame score is under 0.5 points
-  anywhere near the useful thresholds.
-* `flatten()` composites transparent images over a backdrop before scoring,
-  twice — dark and light — and the worse score wins. Fully transparent pixels
-  carry arbitrary RGB, so comparing them raw produces nonsense. The upstream
-  `ssimulacra2` package has a dead alpha branch and gets this wrong, which is
-  why it's handled here instead of delegated.
-
-### `pocketsize/encoders.py` — "how do I write the bytes?"
-
-Six candidates — `jpeg`, `png8`, `png`, `webp`, `webp-lossless`, `avif` — each
-exposing an ascending ladder of quality levels, so the search can bisect over any
-of them generically without knowing what the levels mean. `avif` only reports
-`available()` where Pillow was built against libavif, which most Windows wheels
-are not; the browser engine has had it since the WASM codec tier landed.
-
-Which candidates a run is allowed to use comes from `destinations.py`, not from
-here. **That is the single place the format policy lives**, and it is shared with
-`web/worker.js`, the browser UI's `web/js/` modules and the desktop UI — the same
-entries with the same numbers in all four. The browser's copy is
-`web/destinations.js`, generated by `tools/gen_destinations.py` and committed; CI
-regenerates it and fails on a diff.
-
-`JpegEncoder` is hardcoded to 4:4:4 chroma. That's deliberate: on saturated
-content, matching 4:4:4's quality-76 score with 4:2:0 required quality 97 and
-produced a file 3.8× larger. Luma-only SSIM cannot see this, which is how the
-mistake survives in most hand-rolled compressors.
-
-Three optional pip packages do real work when installed, and all three ship
-Windows wheels:
-
-| Package | What it does | Worth |
-| --- | --- | --- |
-| `imagequant` | libimagequant, the engine inside pngquant | Large. Pillow's own quantizers hit SSIMULACRA 2 87 at 256 colours where this hits 90 at 64 |
-| `zopflipy` | zopflipng-grade deflate | ~10% off any PNG, lossless |
-| `mozjpeg-lossless-optimization` | mozjpeg's lossless pass | ~1%, free, never changes a pixel |
-
-`imagequant` is a pip-only engine: libimagequant is GPL v3-or-later, so it is
-excluded from the downloadable installers, which would otherwise put this
-MIT-licensed application under the GPL. Installing with pip is unaffected —
-your own package manager fetches the wheel. Measured cost of its absence:
-0.5% across the benchmark corpus, since the bake-off usually ships
-WebP-lossless or JPEG over PNG-8. Same reasoning as video; see
-`docs/THIRD_PARTY_NOTICES.md`.
-
-### `pocketsize/core.py` — the engine
-
-The pipeline per image:
-
-```
-_normalise()      EXIF rotate -> resize -> strip metadata
-_search_one()     once per allowed candidate format
-  -> pick the smallest result that cleared the floor
-guardrails        never bigger than source; animated passthrough; error capture
-write
-```
-
-`_search_one()` is the heart of it:
-
-1. Probe the top quality level first. If even maximum quality misses the target,
-   there's nothing to search for — take it and move on.
-2. Bisect over the level ladder, scoring on sampled tiles with a fast encoder
-   setting. Cheap.
-3. Re-encode the winning level at full encoder effort and verify at full
-   resolution. If the honest check misses, step up until it clears — the tool
-   never ships something that fails the promise it just printed.
-
-`compress_tree()` uses **processes, not threads**. The metric is numpy/scipy
-bound, and this is the difference between using one core and using all of them.
-
-### `pocketsize/video.py` — the same idea, with time in it
-
-The largest file in the package, and most of it is `core.py`'s idea restated:
-encode the thing several ways, open every result back up, measure it against the
-source, keep the smallest one that still measures close enough. Nothing here
-guesses a quality number either. Three things are genuinely different, and each
-one is visible in the code.
-
-**You cannot afford to encode the whole file to learn what a setting does.** A
-ten-minute clip takes minutes per attempt and the search needs several of them.
-So the search runs on **samples**: `sample_windows()` returns 20-second windows,
-evenly spaced through the runtime, roughly one per twelve minutes, and only the
-winning setting is ever applied to the whole file. Windows are evenly spaced
-rather than scene-aware on purpose — scene detection buys encode *efficiency*,
-not probe accuracy, and its accuracy is worst on exactly the handheld consumer
-footage this tool sees most. Short clips are not sampled at all: once the
-windows would cover 85% of the runtime, sampling costs more than it saves and
-measures less, so the whole file is used.
-
-`_search_quality()` then bisects the CRF ladder over those windows, the same
-shape as the image tier's bisection over a JPEG quality ladder and for the same
-reason — the ladder is ordered, the metric is monotone enough across it, and
-four probes settle sixteen rungs. The top rung is probed first so that a source
-no setting can satisfy (already heavily compressed, or pure noise) costs one
-probe rather than a whole search. Probes score three frames per window with a
-fast encoder preset; the finished file is verified at eight, and if the honest
-check misses the floor the search climbs a rung and re-encodes. Sampled probes
-are allowed to be optimistic; the shipped file is not.
-
-**A per-frame metric cannot see time**, so `pooled()` reports the low percentile
-of the frame scores rather than their mean. SSIMULACRA 2 scores a still — it
-cannot see flicker, or quality sagging between keyframes and snapping back — and
-an average calls "perfect for four seconds, falls apart for one" fine, which is
-precisely the clip a person notices. Reporting the worst end means the promise
-covers the whole runtime. The mean is carried alongside it and is itself
-evidence: a mean sitting far above the reported score is what metric-pumping
-looks like from outside.
-
-`frame_times()` insets the sampled moments from both ends of each window,
-because the first frame after a cut is a keyframe and the most flattering frame
-in the encode; measuring there would systematically overstate quality. And
-`read_frames_at()` pairs frames **by timestamp, never by position**. Two encodes
-of one source do not necessarily hold the same number of frames, and pairing the
-Nth of one with the Nth of the other silently compares frame 40 against frame
-39 — which reported SSIMULACRA 2 of −295 where the truth was about 72.
-
-**The witness is a different metric from the one the search steers on.**
-`xpsnr()` runs FFmpeg's XPSNR filter over the finished file and records a dB
-figure on every result. The search watches SSIMULACRA 2, so SSIMULACRA 2 alone
-would be a claim rather than evidence — encoders now ship modes tuned to score
-well on named metrics, which makes this rule load-bearing rather than
-ceremonial. XPSNR comes from a different family, carries a temporal term, and
-fails differently. When the build has no `xpsnr` filter the function returns
-0.0 and the result simply carries one number instead of two; that is a missing
-second opinion, not a failure.
-
-Two shapes of answer, and the rule that ranks them:
-
-* `_at_quality()` is the ordinary case — the smallest file that still measures
-  at or above the destination's floor.
-* `_under_cap()` is the hard-ceiling case — rate-targeted rather than
-  quality-targeted, because you cannot promise a quality *and* a size. One
-  encode, one measurement, one retry at a tighter rate if the first overshoots.
-  It aims at 95% of the cap, because a file that misses Discord's limit by 40 KB
-  is as useless as one that misses it by 4 MB.
-* **Quality is searched first even when a cap exists.** A limit is not an
-  instruction to spend it: if the honest answer is 3 MB, `--for chat` ships 3 MB
-  rather than inflating to 10. The cap only takes over when the quality answer
-  does not fit, and then `capped` is set and the result line says the picture is
-  not as sharp as the original.
-* `_beats()` inverts under a cap, and that inversion is the whole reason it is a
-  function. With no cap everything on the table already measures close enough,
-  so the smallest file wins; under a cap everything on the table already fits,
-  so the best-looking one wins. A candidate that met the floor always beats one
-  that only met the byte limit, whatever the numbers say — the first kept the
-  promise and the second is a compromise about to be disclosed.
-
-What the engine does to the picture before any of that:
-
-* **Rotation is baked into the pixels**, not passed along as a flag. A phone
-  held upright records a landscape frame and sets a display-matrix flag, and a
-  flag is advice: some players honour it, plenty of upload forms and editors do
-  not, and the person who compressed the video has no way to know which kind
-  they are dealing with until it is already sideways in front of an audience.
-  Non-square pixels are resolved the same way — output is always square-pixel.
-  `display_shape()` is what everything downstream works in; the stored frame is
-  only how the picture was filed away.
-* **The source is straightened before it is scored, too.** Our output carries no
-  rotation flag because it no longer needs one, so scoring it against an
-  unstraightened source measures the rotation rather than the encode and reports
-  a catastrophe that is not there.
-* **HDR is tone mapped, not flattened.** A PQ or HLG transfer — what a modern
-  phone records by default — is detected by `_looks_hdr()` and converted by the
-  `colour` section: the standard inverse transfer to linear light, BT.2020
-  primaries to BT.709, a documented tone curve, then the ordinary transfer back.
-  This wheel ships no `zscale` and its colour filters cannot read those
-  transfers, so the arithmetic is done here rather than in a filter graph, and
-  it is pinned by tests against the standards themselves — the curve's own
-  identity, its inverse, the join in HLG's two halves, BT.2408 reference white —
-  rather than against itself. The result says the colour was converted.
-  A transfer that cannot be named is still refused rather than guessed at, and
-  `_looks_hdr()` errs cautious on purpose: a refused file costs one explanation,
-  and the other way costs a ruined one with no hint why.
-* **Sound is copied where it can be.** Re-encoding lossy audio only ever loses
-  and audio is a small share of the bytes, so `_open_audio()` copies the track
-  whenever the destination allows it and the container can carry the codec, and
-  re-encodes to AAC (or Opus in WebM) when it must. Which of the two happened is
-  reported explicitly, never inferred. A second soundtrack and any subtitle
-  track are dropped — and *said*, because losing content in silence is the
-  failure mode here.
-
-Two details that look like housekeeping and are not. `_output_path()` puts the
-format's name in each candidate's filename, because AV1 and H.264 both live in
-`.mp4`: name candidates after the source alone and every competitor in a
-multi-format destination gets the same path, they overwrite each other, and the
-loser's cleanup deletes the winner — leaving the engine reporting a size for a
-file that is no longer there. And `_sws_flags()` returns `"LANCZOS"` in capitals
-because PyAV looks the resampler up in an enum by name; the lowercase spelling
-raises `KeyError`, which surfaces as "every encoder failed on this file" and
-nothing more specific.
-
-Finally, `Progress` and `Cancelled`. A video encode is the first thing this
-project does that can run for minutes, and silence for minutes is
-indistinguishable from a hang. `compress()` takes `on_progress` and
-`should_stop`; the engine calls `step()` only where it genuinely knows something
-new, the same points where cancellation is checked, so a stopped job dies at a
-known boundary rather than mid-mux. Everything written so far is removed when it
-does — a half-encoded file that looks finished is the one outcome worse than no
-file at all.
-
-Everything in this file degrades. PyAV is an optional install; without it every
-function still imports, `available()` says no, and a video is reported and
-skipped with the command that would fix it. Never a crash, and never a silent
-pass-through of an uncompressed file.
-
-### `pocketsize/cli.py` — arguments and the report
-
-Also home to `PRESETS` and to `--check`, which reports which optional engines are
-actually installed. Worth running first on any new machine. It has a `video`
-block of its own listing whether PyAV is present, which of the codec pairs this
-build can actually *write*, and whether the `xpsnr` filter exists — the last one
-is reported as a fact rather than a fault, because its absence means this build
-has no second opinion to offer rather than that something is broken.
-
-Pictures and videos travel through the same run: `iter_videos()` walks the same
-tree as the image intake, a folder of both is one command, and `describe_video()`
-prints a video in the same shape as an image line. The differences on that line
-are the ones a person would ask about — how long the clip was, whether the sound
-was touched, and, when a size limit is what decided the answer, that the picture
-is not as sharp as the original. That last one goes on the result line and not a
-later one, for exactly the reason resizing does: a disclosure that arrives after
-the number has been read is not a disclosure.
+A note on history, because the git log will otherwise confuse you. This repo
+used to carry a second complete implementation in Python - a CLI, a desktop
+app, a local server, and video support - kept in step with the browser by
+parity tests and a sync tool. `9761685` removed all of it. One implementation
+cannot drift from itself. Older commits, `CHANGELOG.md` and the `docs/VIDEO_*`
+plans still describe that world; they are kept as design records, not as a map
+of the tree. If a document names a `.py` file outside `tools/` or `tests/`, it
+is history.
 
 ## Where to make changes
 
 | You want to… | Go to |
 | --- | --- |
-| Change what formats a destination gets | `destinations.py` → `DESTINATIONS` |
-| Add a format (JPEG XL) | Subclass `Encoder`, add to `ALL` and to a destination |
-| Change quality or size defaults | `destinations.py` → `DESTINATIONS` |
-| Add or rename a destination | `destinations.py`, then `python tools/gen_destinations.py` (the browser and desktop UIs read the result; nothing is mirrored by hand) |
-| Change how quality is judged | `quality.py` → `Metric` |
-| Change the search strategy | `core.py` → `_search_one` |
-| Change resize / metadata behaviour | `core.py` → `_normalise` |
-| Change which video formats a destination gets | `destinations.py` → `video_formats` on the entry |
-| Add a video codec | `video.py` → `FORMATS`, with its own CRF ladder, then list the pair on a destination |
-| Change the video search or how it samples | `video.py` → `_search_quality`, `sample_windows` |
-| Change how a video's frame scores become one number | `video.py` → `pooled` |
-| Change what a size cap does | `video.py` → `_under_cap`, `_beats` |
+| Change what formats a destination gets | `web/destinations.js` → `DESTINATION_FORMATS` |
+| Change quality or size defaults | `web/destinations.js` |
+| Add or rename a destination | `web/destinations.js`, then keep `web/index.html`'s control in step |
+| Change how quality is judged | `web/ss2.js`, then `python tools/gen_ss2_module.py` |
+| Change the search strategy | `web/worker.js` → `searchOne` / `searchUnderSize` |
+| Change resize / metadata behaviour | `web/worker.js` → `decodeNormalised` |
+| Add a format | `web/worker.js` → `makeEncoders`, and list it on a destination |
+| Change the worker pool or dispatch | `web/js/engine.js` |
+| Change what a size cap does | `web/worker.js` → `searchUnderSize` |
+| Change the typeface | `python tools/gen_fonts.py --display "Family"` - one command, everywhere |
 
 ## Running it
 
 ```bash
-python compress.py --check                # which engines are live, video included
-python compress.py input/ -o output/ -v   # -v shows every candidate, not just the winner
-python -m unittest discover -s tests      # 201 tests, ~6 minutes
+node tests/web/serve.mjs 8151          # the app, under production's exact CSP
 
-python tests/make_fixtures.py             # build the benchmark corpus
-python tests/bench_formats.py             # reproduce the format table (~4 min)
-python tests/bench_versions.py            # reproduce the v1-vs-v2 claim (~6 min)
+python -m pip install pillow           # only to write the test images
+cd tests/web && npm ci && cd ../..     # puppeteer-core, to drive real Chrome
 
-python tests/make_video_fixtures.py       # four clips, by content type
-python tests/make_real_world_fixtures.py  # six clips, by awkward shape
-python tests/bench_video.py               # reproduce tests/VIDEO_BENCHMARK.md
+python -m unittest discover -s tests   # the static gates, ~1s
+python tests/web/make_web_fixtures.py  # build the images the probes drop
+node tests/web/e2e.mjs                 # the promise suite, in real Chrome
+node tests/web/ss2_validate.mjs        # the metric vs the Python reference
+node tests/web/verify_fonts.mjs        # faces load; nothing renders above 600
+node tests/web/bench.mjs               # per-format sizes and scores
 ```
 
-The two video corpora exist for different reasons and neither replaces the
-other. `make_video_fixtures.py` varies the *content* — motion, screen
-recording, heavy grain, near-static — which is what decides how well anything
-compresses. `make_real_world_fixtures.py` varies the *container and the
-metadata* — a phone held upright, one held upside down, non-square pixels, HDR,
-variable frame rate, two soundtracks — which is where a video compressor
-silently produces wrong output rather than merely a large file. Building the
-second one found five defects on its first run.
+Serve it through `serve.mjs` rather than any other static server: it sends
+production's `Content-Security-Policy`, and two CSP violations have reached
+production by being invisible under a server that sent none.
 
-`-v` is the flag to reach for when a result surprises you. It prints every
-candidate's size, so you can see *why* a format won rather than guessing.
+`tests/web/` also holds a probe per concern - `probe_pool.mjs` (how many
+workers the machine is given), `probe_backpressure.mjs` (a large batch stays
+inside its memory window), `probe_flow.mjs`, `probe_presets.mjs`,
+`probe_theme.mjs` and others. They assert on real app state through
+`window.imgc`, so copy and ordering changes update assertions rather than
+deleting them.
 
-## What the tests actually cover
-
-Beyond the obvious (output is smaller, folder structure mirrors, corrupt files
-don't crash the run), the suite pins down the decisions that were expensive to
-learn:
-
-* the percentile aggregation really is stricter than the mean
-* transparent pixels are composited, not dropped
-* JPEG output is 4:4:4, asserted by reading the sampling factors back out
-* every destination's formats, size cap and minimum visual match, entry by entry
-* the `documents` destination never offers WebP or AVIF
-* images with alpha are never routed to JPEG
-* `documents` caps at 4096px even when you ask for unlimited — and no other
-  destination does, which is the half that used to be untested when the cap
-  applied to the default and therefore to everybody
-* the older names (`figma`, `archive`) still resolve
-* the hidden `lossless` destination offers only pixel-exact formats and never
-  resizes — identical means identical
-* the bake-off winner is the smallest passing candidate, not just any candidate
-
-On the video side, the same posture applied to the things that were expensive to
-learn:
-
-* no destination anywhere writes HEVC, asserted over the whole table rather than
-  trusted to review
-* `thumbnail` refuses video, and says so rather than inventing an answer
-* the reported score really is the worst end and not the average
-* the winner rule inverts under a size cap, and meeting the quality floor beats
-  merely fitting
-* a cap that cost quality says so on the result — and falling short of the floor
-  is disclosed **even under a cap**, which is the half that used to be
-  unreachable because most video destinations carry one
-* a bake-off between two formats leaves a real file on disk, which is what
-  catches candidates that share a path and delete each other
-* a phone held upright does not come out sideways, one held upside down is
-  turned back, and non-square pixels are not left squashed — each pinned by a
-  pixel assertion, not just by output dimensions, because a squashed picture and
-  a straight one can have identical dimensions
-* HDR is never silently flattened
-* a variable-frame-rate clip keeps its length
-* dropping a soundtrack is disclosed
-* a long job says what it is doing, and can be stopped
-
-If you change behaviour and one of these fails, read the README section it maps
-to before "fixing" the test.
-
-## Two things to know before extending it
-
-**The `documents` format policy rests on one unverified claim** — that Figma
-transcodes WebP to PNG on import. It comes from a Figma forum expert, not a
-changelog. The downside if it's true is severe and the upside is a few percent,
-so JPEG/PNG is the right answer for that destination either way. But if you ever
-add a format or loosen it, re-check that first: it's the hinge the whole policy
-turns on. Note this is now one destination's rule rather than everyone's — it was
-the default until 2.7, which meant people who had never opened a design tool
-silently got no WebP.
-To settle it: import a WebP into Figma and have any plugin call
-`getBytesAsync()` on it. Bytes starting `RIFF` mean WebP survived.
-
-**Keep dependencies pip-only.** This runs on Windows with plain Python. Every
-engine was chosen because it has a Windows wheel. The moment something shells out
-to `cwebp`, `pngquant` or `avifenc`, `run.bat` stops working.
-
-Video is the rule's hardest test and the reason PyAV is the only video
-dependency. Every other route to an encoder means finding an FFmpeg binary,
-putting it on `PATH` and shelling out to it — which is exactly what this project
-does not do. PyAV ships wheels carrying a complete FFmpeg, x264 and SVT-AV1
-included, for Windows x64 and ARM64, macOS and Linux: one `pip install`, no
-binaries to find, and the API is in-process rather than a command line to parse
-the output of. Two consequences follow from it and both are deliberate. It needs
-Python 3.11 while the rest of this package still runs on 3.9, so it is the
-separate `video` extra rather than part of `full` — video absent is not video
-broken, it degrades like every other optional engine. And that bundled FFmpeg is
-GPL, which is fine to depend on and a different act to *bundle*: the standalone
-installers must not ship `av` until that is resolved (decision V3 in
-`docs/VIDEO_IMPLEMENTATION_PLAN.md`).
+Two probes are known-bad on a clean checkout: `probe_sizecap.mjs` throws, and
+`probe_pool.mjs` is flaky across back-to-back Chrome runs when a previous run
+left service-worker cache behind. Re-run alone before believing a failure.
 
 ---
 
-# The desktop app
+# The app (`web/`)
 
-Added in 2.1. Three files, plus the packaging around them.
+Deployed at [pocketsize.syedsarib.com](https://pocketsize.syedsarib.com).
 
-### `pocketsize/server.py` — state and the local API
-
-Standard library only: `http.server`, threads, a `queue`. A tool people install
-to compress a folder should not drag a web framework along with it.
-
-* **`Session`** is the whole application state — the item list, the settings, the
-  compressed bytes, the watched folder. One per running app, guarded by an
-  `RLock`, with a `rev` counter the UI polls against.
-* Compressed bytes live in `Session.results` and **never touch disk** until
-  `save()` is called. That's what makes "review the batch, then decide" possible.
-* Worker threads pull from a `queue.Queue`. Threads rather than processes because
-  the state is shared and the metric is numpy/scipy-bound, which releases the GIL.
-* Bound to `127.0.0.1` with a per-run token, checked on every API route. The
-  token is injected into the HTML at serve time, replacing `__TOKEN__`.
-* `pick_folder()` opens the OS folder chooser through stdlib `tkinter`, and
-  returns `""` when that isn't available so the UI can fall back to a prompt.
-
-Video runs through the same session and the same queue, with four differences
-that are all forced by the files being large:
-
-* **An item knows it is a video the moment it lands**, not after an encode that
-  has not started. `Item.kind` is set at intake from the filename, because the
-  UI has to show a player where a picture would show a picture, and it has to do
-  that before anything has been measured. Folder intake lists videos as well as
-  pictures — it listed only pictures at first, so the filter that accepted
-  videos never saw one and a dragged-in folder of holiday clips added nothing at
-  all.
-* **Progress arrives through the ordinary polling**, not a second mechanism. The
-  engine's `on_progress` callback writes onto the item and bumps `rev`; the UI
-  already re-renders on `rev`. An image finishes fast enough that a bar would be
-  noise, and a video does not — silence for minutes reads as a hang.
-* **Saving moves the file the engine already wrote** instead of encoding twice,
-  and never writes over something already sitting in the folder — it takes the
-  next free `-2`, `-3` name. Compressed *images* live in memory until Save, and
-  a two-gigabyte video does not.
-* **`/api/video/` answers range requests**, streaming off disk in chunks rather
-  than reading the file into memory. A `<video>` element asks for ranges, and a
-  player that cannot seek cannot be compared against anything — which is the
-  entire point of this tier.
-
-### `pocketsize/gui.py` — the launcher
-
-Opens a real window via `pywebview` when it's installed, and the browser
-otherwise. The fallback is the same full application, which is why pywebview is a
-soft dependency rather than a hard one.
-
-### `pocketsize/webui/app.html` — the interface
-
-One self-contained file: no build step, no CDN, no framework. Polls
-`/api/state` (400ms while working, 1200ms idle) and re-renders on `rev` change.
-
-Design notes that are decisions rather than accidents:
-
-* **The UI is achromatic except for one brass accent**, spent on exactly two
-  things: the primary action and the badge on the winning encoding. The interface
-  is chrome around photographs; if it has opinions about colour, it competes with
-  the images.
-* **The viewport is sized in JavaScript** to the image's fitted box, so the split
-  divider lines up with the visible image edges rather than with a letterboxed
-  container. `applyZoom()` handles both fit and fixed zoom levels.
-* **Desktop-first, with a 720px floor.** A three-pane inspector doesn't become
-  useful at phone width by stacking; below the floor the app scrolls rather than
-  pretending.
-* `[hidden] { display: none !important; }` is load-bearing — several elements set
-  an explicit `display`, which otherwise beats the user-agent `[hidden]` rule.
-* **Video is a second pair of layers on the same stage**, not a second stage.
-  `#vid-before` and `#vid-after` sit where the two `<img>` layers sit, so the
-  split, the divider and the zoom keep working with no branch in any of them.
-* **Two players, one clock.** The compressed side follows the original's
-  `currentTime` rather than both running free. Two independent players drift
-  apart within seconds, and a split showing second 3 against second 5 is not a
-  comparison — it is two videos.
-* **An `<img>` with nothing to show must leave the layout.** With no `src` it
-  lays out its `alt` text; with a `src` that will not decode it paints the
-  browser's broken-image glyph beside it. Both landed on the comparison stage
-  — a torn-page icon and the words "Original image" over the artwork — for any
-  file this browser has no decoder for. `.viewport img:not([src])` and
-  `img.dead` are display-none, and `#stage-none` explains the absence in the
-  product's own words. The E2E fails on any visible image box with
-  `naturalWidth === 0`, which is what that class of bug looks like from
-  outside.
-
-### Where to change things
-
-| You want to… | Go to |
-| --- | --- |
-| Add an API route | `server.py` → `Handler.do_GET` / `do_POST` |
-| Change what the UI shows per image | `server.py` → `Item` + `app.html` → `renderInspector` |
-| Change polling or worker counts | `server.py` → `Session.__init__`, `app.html` → `poll` |
-| Restyle | `app.html` → the `:root` / `[data-theme="light"]` variable blocks |
-
-### Packaging
-
-`pyproject.toml` defines two entry points — `pocketsize` (CLI) and
-`pocketsize-gui` — with optional extras: `full` (the good engines), `app`
-(pywebview), `video` (PyAV, marked `python_version >= "3.11"`), `dev` (ruff). CI
-runs the tests on Linux, macOS and Windows across Python 3.9–3.13, plus a
-**core-only job** that proves the tool still works with every optional engine
-absent. Keep that job passing: silently requiring an extra is how a "no
-dependencies to compile" promise quietly breaks — and `video` is the extra most
-likely to break it, because it is the one that cannot be installed at all on two
-of the interpreter versions the rest of the package supports.
-
----
-
-# The web version (`web/`)
-
-A static port of the same engine that runs entirely in the browser, deployed at
-[pocketsize.vercel.app](https://pocketsize.vercel.app).
-
-**The engine**, unchanged and independent of any interface: `worker.js` (ladder
-bisection, the bake-off, dual-backdrop transparency scoring, the never-bigger
-rule — a port of `quality.py` + `core.py` + `encoders.py`), `ss2.js` (the metric)
-and `destinations.js` (generated from `destinations.py`).
+**The engine**, independent of any interface: `worker.js` (ladder bisection, the
+bake-off, dual-backdrop transparency scoring, the never-bigger rule), `ss2.js`
+(the metric) and `destinations.js` (the destination table - once generated from
+Python, now the reference itself and edited directly).
 
 **The interface**, one page and nothing else. `index.html` is the dashboard;
 `web/css/` holds six stylesheets, one per concern, with every colour and space

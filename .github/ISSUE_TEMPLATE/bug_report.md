@@ -11,10 +11,15 @@ labels: bug
 
 **The image** (attach it if you can - most bugs here are content-specific)
 
-**Output of `pocketsize --check`**
+**Your browser and version, and your OS**
+
+**Anything the browser console printed**
 
 ```
 paste here
 ```
 
-**OS and Python version**
+**Optional, and it answers most questions at once:** paste `window.imgc.poolPlan()`
+from that same console. It reports how many workers your machine was given and
+what it decided that from, which is the first thing worth knowing for anything
+slow, stuck, or memory-related.

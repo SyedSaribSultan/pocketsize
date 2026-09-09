@@ -88,7 +88,7 @@ exists because `check_ss2_corpus.py` was itself only verified by hand.
 ## Generated files
 
 Several things are generated from a source of truth and committed, because
-neither `web/` nor a pip install has a build step and neither should grow one:
+`web/` has no build step and should not grow one:
 
 ```bash
 python tools/gen_ss2_module.py      --check   # web/ss2.module.js
