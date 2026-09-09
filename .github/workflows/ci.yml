@@ -27,10 +27,11 @@ jobs:
         with:
           node-version: "20"
       - name: Install the fixture builders
-        # Pillow only, to write the test images. The app itself needs no Python.
+        # Pillow writes the test images; fontTools is what the typeface gate
+        # reads the shipped woff2 with. The app itself needs no Python.
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pillow
+          python -m pip install pillow fonttools
       - name: Install the browser harness
         working-directory: tests/web
         run: npm ci
@@ -145,7 +146,7 @@ jobs:
       - name: Install the fixture builders
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pillow
+          python -m pip install pillow fonttools
       - run: python tools/gen_seo_pages.py --check
 
   lint:
