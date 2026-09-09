@@ -167,30 +167,75 @@ function ss2Xyb(R, G, B, n) {
 }
 
 /** Separable Gaussian. Zero boundary along x, symmetric reflection along y -
- *  matching the reference's transposed padding (see the header comment). */
+ *  matching the reference's transposed padding (see the header comment).
+ *
+ *  Each pass splits the interior - where all 2r+1 taps are in range - from the
+ *  edges, and unrolls the interior's taps. The straightforward version recomputes
+ *  a clamp per tap and reflects a row index per tap, which keeps the inner loop
+ *  from being optimised at all. This is the hottest function in the app by a wide
+ *  margin: five blurs per channel per scale, three channels, six scales - about
+ *  ninety passes for one score, and a score runs on every probe of every ladder.
+ *
+ *  Measured in Chrome: 1.7-1.9x on the whole metric, which is 20% off the wall
+ *  clock of a six-image batch. Bit-identical on all 48 validation vectors - not
+ *  within tolerance, the same float - so `ss2_validate.mjs` is unmoved. */
 function ss2Blur(src, w, h, tmp, dst) {
   const k = SS2_KERNEL, r = SS2_R;
-  // pass 1: horizontal, zero boundary
+  const k0 = k[0], k1 = k[1], k2 = k[2], k3 = k[3], k4 = k[4], k5 = k[5],
+        k6 = k[6], k7 = k[7], k8 = k[8], k9 = k[9], k10 = k[10];
+
+  // pass 1: horizontal, zero boundary - out-of-range taps contribute zero
+  const lead = Math.min(r, w);
+  const xEnd = w - r;
   for (let y = 0; y < h; y++) {
     const row = y * w;
-    for (let x = 0; x < w; x++) {
+    for (let x = 0; x < lead; x++) {
       let acc = 0;
-      const lo = Math.max(-r, -x), hi = Math.min(r, w - 1 - x);
-      for (let d = lo; d <= hi; d++) acc += k[d + r] * src[row + x + d];
-      tmp[row + x] = acc;   // out-of-range taps contribute zero
+      const hi = Math.min(r, w - 1 - x);
+      for (let d = -x; d <= hi; d++) acc += k[d + r] * src[row + x + d];
+      tmp[row + x] = acc;
+    }
+    for (let x = lead; x < xEnd; x++) {
+      const b = row + x;
+      tmp[b] = k0 * src[b - 5] + k1 * src[b - 4] + k2 * src[b - 3] + k3 * src[b - 2]
+             + k4 * src[b - 1] + k5 * src[b] + k6 * src[b + 1] + k7 * src[b + 2]
+             + k8 * src[b + 3] + k9 * src[b + 4] + k10 * src[b + 5];
+    }
+    for (let x = Math.max(xEnd, lead); x < w; x++) {
+      let acc = 0;
+      const lo = Math.max(-r, -x);
+      for (let d = lo; d <= w - 1 - x; d++) acc += k[d + r] * src[row + x + d];
+      tmp[row + x] = acc;
     }
   }
+
   // pass 2: vertical, symmetric reflection (d c b a | a b c d | d c b a)
+  const rowsBuf = new Int32Array(2 * r + 1);
   for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      let acc = 0;
+    const orow = y * w;
+    if (y >= r && y < h - r) {
+      const r0 = (y - 5) * w, r1 = (y - 4) * w, r2 = (y - 3) * w, r3 = (y - 2) * w,
+            r4 = (y - 1) * w, r5 = y * w, r6 = (y + 1) * w, r7 = (y + 2) * w,
+            r8 = (y + 3) * w, r9 = (y + 4) * w, r10 = (y + 5) * w;
+      for (let x = 0; x < w; x++) {
+        dst[orow + x] = k0 * tmp[r0 + x] + k1 * tmp[r1 + x] + k2 * tmp[r2 + x]
+                      + k3 * tmp[r3 + x] + k4 * tmp[r4 + x] + k5 * tmp[r5 + x]
+                      + k6 * tmp[r6 + x] + k7 * tmp[r7 + x] + k8 * tmp[r8 + x]
+                      + k9 * tmp[r9 + x] + k10 * tmp[r10 + x];
+      }
+    } else {
+      // The reflected row is a property of the row, not of the pixel.
       for (let d = -r; d <= r; d++) {
         let yy = y + d;
         if (yy < 0) yy = -yy - 1;
         else if (yy >= h) yy = 2 * h - 1 - yy;
-        acc += k[d + r] * tmp[yy * w + x];
+        rowsBuf[d + r] = yy * w;
       }
-      dst[y * w + x] = acc;
+      for (let x = 0; x < w; x++) {
+        let acc = 0;
+        for (let d = 0; d <= 2 * r; d++) acc += k[d] * tmp[rowsBuf[d] + x];
+        dst[orow + x] = acc;
+      }
     }
   }
   return dst;
