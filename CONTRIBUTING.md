@@ -4,74 +4,63 @@ Thanks for taking a look.
 
 ## Getting set up
 
+The app is the files in `web/`, served as they are. There is no build step and
+no framework, so there is nothing to compile before you can see a change.
+
 ```bash
 git clone https://github.com/SyedSaribSultan/pocketsize
 cd pocketsize
-python -m pip install -e ".[full,app,video,dev]"
-pocketsize --check          # confirm every engine is active, video included
-python -m unittest discover -s tests
+
+node tests/web/serve.mjs 8151      # then open http://localhost:8151
 ```
 
-`video` is the one extra that cannot be installed everywhere: PyAV needs Python
-3.11, and the rest of the package still supports 3.9, so the dependency carries
-a `python_version >= "3.11"` marker and simply installs nothing below that.
-`pocketsize --check` will say so, and the video *engine* tests skip themselves
-the way the AVIF ones skip without the plugin — the table and arithmetic tests
-still run. That is the correct behaviour rather than a broken checkout: video
-absent is not video broken.
+Serve it that way rather than through any other static server: `serve.mjs`
+sends production's exact `Content-Security-Policy`, and two CSP violations have
+reached production by being invisible under a server that sent no policy.
+
+The gates need two toolchains, both only for testing — the app itself needs
+neither at runtime:
+
+```bash
+python -m pip install pillow           # writes the test images
+cd tests/web && npm ci && cd ../..     # puppeteer-core, to drive real Chrome
+
+python -m unittest discover -s tests   # the static gates, ~1s
+python tests/web/make_web_fixtures.py  # build the images the probes drop
+node tests/web/e2e.mjs                 # the promise suite, in real Chrome
+node tests/web/ss2_validate.mjs        # the metric vs the Python reference
+node tests/web/verify_fonts.mjs        # faces load; nothing renders above 600
+```
+
+`resolve_puppeteer.mjs` defaults to a Windows Chrome path and reads
+`CHROME_PATH` as the documented override.
 
 ## The one thing to know before changing behaviour
 
 This project's whole claim is that quality is *measured*, not guessed. So any
-change that affects output has to come with a measurement:
+change that affects output has to come with a measurement, and the measurement
+has to be at **matched perceptual quality**. A smaller file at a lower score
+isn't an improvement, it's a different setting.
+
+The corpus and the harness for that live in `tests/web/`:
 
 ```bash
-python tests/make_fixtures.py     # build the benchmark corpus
-python tests/bench_formats.py     # per-format sizes at a fixed quality target
-python tests/bench_versions.py    # matched-quality comparison against v1
+python tests/web/make_web_fixtures.py   # the corpus
+node tests/web/bench.mjs                # per-format sizes and scores
+node tests/web/ss2_validate.mjs         # the metric itself, against the reference
 ```
-
-If your change makes files smaller, show it at **matched perceptual quality**.
-A smaller file at a lower score isn't an improvement, it's a different setting.
 
 And don't validate a change to the metric using that same metric — that's
-circular, and it is exactly the mistake that made version 1 look fine.
+circular, and it is exactly the mistake that made version 1 look fine. When you
+change the scorer, `ss2_validate.mjs` is the witness: it compares against
+scores produced by the Python reference implementation, not by this code.
 
-## The video corpora, and why there are two
+A worked example, from the commit that made the metric 1.7-1.9x faster: the
+claim was "faster, and the output does not move", so the evidence was a Chrome
+timing either side *and* the fact that all 48 validation vectors returned the
+byte-identical float. Speed measured in Node was ~1.6x more flattering than
+Chrome — quote the browser number, since that is the one users get.
 
-```bash
-python tests/make_video_fixtures.py        # content: motion, screen, grain, still
-python tests/make_real_world_fixtures.py   # shapes: rotation, SAR, HDR, VFR, tracks
-python tests/bench_video.py                # writes tests/VIDEO_BENCHMARK.md
-```
-
-They answer different questions and neither replaces the other.
-`make_video_fixtures.py` varies the **content** — a moving gradient, a screen
-recording, heavy sensor grain, a near-static shot — because content is what
-decides how well anything compresses and where the right answer genuinely
-differs between codecs. `make_real_world_fixtures.py` varies the **container and
-the metadata** — a phone held upright, one held upside down, non-square pixels,
-HDR, variable frame rate, two soundtracks — because that is where a video
-compressor produces *wrong* output rather than merely large output, and wrong
-output is invisible to a size-and-score benchmark. Writing the second corpus
-found five defects on its first run; a sideways video scores fine against a
-sideways reference.
-
-Both corpora are written **near-lossless on purpose**. An earlier version wrote
-them at an ordinary quality, which made them already-compressed files that the
-engine correctly refused to beat — so the tests passed while measuring nothing
-but the fixture's smallness. The cost of the fix is that matching a pristine
-master at a visual match of 92 is a far harder ask than matching footage a
-camera already compressed once, which is what a person actually hands this tool.
-`tests/VIDEO_BENCHMARK.md` says that in place rather than letting the numbers
-imply the compressor is worse than it is, and where no strategy clears the floor
-it prints **no** on every row instead of quietly lowering the bar.
-
-`bench_video.py` searches every strategy that can be searched to the same floor
-and reports two metric families, because the rule above applies with more force
-to video than to pictures: encoders now ship modes explicitly tuned to score
-well on a named metric. The search steers on SSIMULACRA 2 and XPSNR is the
-independent witness — never the other way round, and never only one of them.
 
 ## Every new gate must be observed failing
 
@@ -102,20 +91,21 @@ Several things are generated from a source of truth and committed, because
 neither `web/` nor a pip install has a build step and neither should grow one:
 
 ```bash
-python tools/gen_destinations.py    --check   # web/destinations.js
 python tools/gen_ss2_module.py      --check   # web/ss2.module.js
-python tools/sync_webui_assets.py   --check   # the desktop app's design system
 python tools/gen_seo_pages.py       --check   # the use-case pages + sitemap
+python tools/gen_fonts.py           --check   # web/fonts.css + the woff2 files
+python tools/gen_tokens_subset.py   --check   # web/heyoz-tokens.css
 ```
 
 Drop `--check` to rewrite them. **Never edit the outputs.** Change the source
-and re-run. Where each one is enforced differs, and it is worth knowing which:
-`gen_destinations` and `sync_webui_assets` have their own CI step *and* a test
-(`test_destination_parity.py`, `test_design_system.py`); `gen_seo_pages` is
-gated by `test_seo_pages.py` inside the suite. **`gen_ss2_module` currently has
-neither**, which by this project's own rule makes it a convention rather than a
-guarantee — if you touch `web/ss2.js`, run the generator by hand and commit the
-result until that gap is closed.
+and re-run. `gen_seo_pages`, `gen_fonts` and `gen_tokens_subset` are each gated
+by a test inside the suite (`test_seo_pages.py`, `test_design_system.py`), so a
+stale output fails the build. **`gen_ss2_module` has a CI step but no test**,
+which by this project's own rule makes it a convention rather than a guarantee
+— if you touch `web/ss2.js`, run the generator by hand and commit the result.
+
+`web/destinations.js` was generated from a Python source that no longer ships.
+It is now the reference itself, and is edited directly.
 
 | Output | Source |
 | --- | --- |
@@ -213,8 +203,11 @@ meaning. Do not re-handle it per component or per app.
 
 ## Reporting a bug
 
-Include the output of `pocketsize --check`, your OS and Python version, and
-ideally the file that triggered it. "It made my file bigger" is a great bug
-report if the file is attached. For video, `--check` also reports which encoders
-this build can actually write and whether it has the `xpsnr` filter, which is
-usually the first thing worth knowing.
+Include your browser and version, your OS, and ideally the file that triggered
+it. "It made my file bigger" is a great bug report if the file is attached.
+
+Two things worth pasting, because they answer most questions at once: whatever
+the browser console printed, and the output of `window.imgc.poolPlan()` typed
+into that console — it reports how many workers the machine was given and what
+it decided that from, which is the first thing to know for anything slow, stuck
+or memory-related.
