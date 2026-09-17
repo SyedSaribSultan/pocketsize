@@ -60,3 +60,5 @@ vanilla-stack equivalent of "only use `@/components/ui`":
 - The browser harness asserts on real app state (`window.imgc`); copy and
   ordering changes must update assertions, not delete them.
 - Run `python -m unittest discover -s tests` before declaring anything done.
+
+Communication rules: follow `~/.claude/CLAUDE.md` (global). It loads alongside this file.
