@@ -191,6 +191,10 @@ change that affects output needs a measurement at **matched perceptual quality**
 — a smaller file at a lower score isn't an improvement, it's a different
 setting. And never validate a metric change using that same metric.
 
+## Author
+
+Built by [Syed Sarib Sultan](https://syedsarib.com), senior product design engineer. More work and guides at [syedsarib.com](https://syedsarib.com).
+
 ## Licence
 
 MIT.
