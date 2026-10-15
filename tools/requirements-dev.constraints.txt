@@ -1,0 +1,15 @@
+# Exact versions for tools/requirements-dev.txt, and for every other pip
+# install in .github/workflows/ci.yml. requirements-dev.txt says what is
+# needed and why; this says which build, so CI cannot change underneath a
+# commit that did not change. Dependabot proposes updates to these pins.
+#
+# Install:  python -m pip install -r tools/requirements-dev.txt -c tools/requirements-dev.constraints.txt
+pillow==12.3.0
+fonttools==4.67.0
+brotli==1.2.0
+zopfli==0.4.3
+numpy==2.5.4
+scipy==1.18.1
+ssimulacra2==0.3.0
+ruff==0.17.0
+pillow-avif-plugin==1.6.0

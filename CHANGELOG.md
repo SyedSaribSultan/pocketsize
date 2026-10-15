@@ -194,6 +194,12 @@ This project follows [Semantic Versioning](https://semver.org/).
   from a violation.
 
 ### Changed
+- **CI cannot change underneath a commit that did not change.** Every GitHub
+  Action is pinned to a full commit SHA (tag kept in a comment), every
+  `pip install` in CI - ruff included - goes through the exact pins in
+  `tools/requirements-dev.constraints.txt`, and `.github/dependabot.yml`
+  proposes updates weekly for Actions, the npm harness in `tests/web` and the
+  pip tools.
 - **The contributor docs name the generators that exist.** CLAUDE.md and
   CONTRIBUTING.md pointed at `pocketsize/destinations.py`,
   `tools/gen_destinations.py`, `tools/sync_webui_assets.py` and

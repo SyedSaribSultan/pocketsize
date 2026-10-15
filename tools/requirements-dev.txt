@@ -14,6 +14,8 @@
 #   ruff           - lint
 #
 # Install:  python -m pip install -r tools/requirements-dev.txt
+#                             -c tools/requirements-dev.constraints.txt
+# The constraints file pins exact versions; CI uses it for every install.
 pillow>=10.0
 fonttools[woff]>=4.40
 numpy>=1.24

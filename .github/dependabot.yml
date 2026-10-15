@@ -1,0 +1,31 @@
+# Keeps the pins honest. Actions are pinned to full commit SHAs and the dev
+# tools to exact versions, which is only safe if something proposes the
+# updates - otherwise a pin is a slow way to fall behind on security fixes.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # The browser harness (puppeteer-core). Test-only; nothing here ships.
+  - package-ecosystem: npm
+    directory: /tests/web
+    schedule:
+      interval: weekly
+    groups:
+      harness:
+        patterns: ["*"]
+
+  # Dev tooling: tools/requirements-dev.txt and its exact pins in
+  # tools/requirements-dev.constraints.txt. Nothing here ships either.
+  - package-ecosystem: pip
+    directory: /tools
+    schedule:
+      interval: weekly
+    groups:
+      dev-tools:
+        patterns: ["*"]
