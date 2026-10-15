@@ -15,6 +15,7 @@ and this script is everything ELSE that one line implies:
     * repoint the precache list in web/sw.js and bump its VERSION
     * set --font-ui / --font-num in web/css/base.css
     * delete the woff2 files nothing references any more
+    * name every woff2 after its own bytes (`<face>-<subset>.<hash>.woff2`)
 
 That last one is not tidiness. Two faces have shipped in this app while
 painting no glyphs at all - Bricolage Grotesque for months, then Geist the
@@ -43,11 +44,19 @@ release instead, instancing the axes down before subsetting:
 A range keeps the axis variable; a single value pins it and drops the machinery
 for it, which is usually a large saving - pinning Fraunces' opsz halved the
 file. tests/test_design_system.py gates `--check`.
+
+CONTENT-HASHED NAMES. web/vercel.json serves /fonts/ as `immutable` for a
+year, and the service worker serves them cache-first. Both are only honest if a
+URL never changes meaning, so each file is named after a hash of its bytes:
+rebuilding a face that changed gives it a new URL, and every reference above is
+rewritten to it. `--check` also fails a file whose name no longer matches its
+bytes, which is how a woff2 rewritten in place would otherwise slip through.
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import subprocess
@@ -147,6 +156,41 @@ def type_scale(path: Path) -> float:
 def slug(family: str) -> str:
     """'Instrument Serif' -> 'instrument-serif', which is the filename stem."""
     return re.sub(r"[^a-z0-9]+", "-", family.lower()).strip("-")
+
+
+HASH_LEN = 10
+
+
+def content_hash(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()[:HASH_LEN]
+
+
+def hashed_name(family: str, subset: str, data: bytes) -> str:
+    """'<face>-<subset>.<hash>.woff2' - the URL changes exactly when the bytes do."""
+    return f"{slug(family)}-{subset}.{content_hash(data)}.woff2"
+
+
+def face_file(family: str, subset: str) -> Path | None:
+    """The shipped file for one cut, if one is on disk under an honest name.
+
+    A file whose name's hash does not match its bytes is not this cut - it is a
+    stale or hand-edited copy, and stale_faces() reports it.
+    """
+    pat = re.compile(rf"^{re.escape(slug(family))}-{re.escape(subset)}"
+                     rf"\.([0-9a-f]{{{HASH_LEN}}})\.woff2$")
+    for p in sorted(FONT_DIR.glob("*.woff2")):
+        m = pat.match(p.name)
+        if m and content_hash(p.read_bytes()) == m.group(1):
+            return p
+    return None
+
+
+def face_url(family: str, subset: str) -> str:
+    p = face_file(family, subset)
+    if p is None:
+        raise SystemExit(f"no woff2 for {family} {subset} in web/fonts/ - "
+                         "run: python tools/gen_fonts.py")
+    return f"/fonts/{p.name}"
 
 
 def fetch(url: str) -> bytes:
@@ -265,7 +309,7 @@ def build_face(family: str, axes: str | None) -> dict[str, int]:
             source_for[name] = staged
 
     for name, unicodes in SUBSETS.items():
-        out = FONT_DIR / f"{stem}-{name}.woff2"
+        out = ROOT / ".fontcache" / f"{stem}-{name}.subset.woff2"
         ranges = ",".join(unicodes.replace("\n", " ").split())
         cmd = [sys.executable, "-m", "fontTools.subset", str(source_for[name]),
                f"--output-file={out}", "--flavor=woff2",
@@ -274,7 +318,13 @@ def build_face(family: str, axes: str | None) -> dict[str, int]:
         if r.returncode:
             tail = (r.stderr or r.stdout).strip().splitlines()[-1:]
             raise SystemExit(f"subsetting {family} {name} failed: {' '.join(tail)}")
-        written[name] = out.stat().st_size
+        data = out.read_bytes()
+        # The previous build of this cut is replaced, not kept beside it: two
+        # honest names for one cut would leave face_file() choosing between them.
+        for old in FONT_DIR.glob(f"{stem}-{name}.*.woff2"):
+            old.unlink()
+        (FONT_DIR / hashed_name(family, name, data)).write_bytes(data)
+        written[name] = len(data)
     return written
 
 
@@ -309,9 +359,9 @@ def face_block(family: str, subset: str) -> str:
         "@font-face {\n"
         f"  font-family: '{family}';\n"
         "  font-style: normal;\n"
-        f"  font-weight: {weight_range(FONT_DIR / f'{slug(family)}-{subset}.woff2')};\n"
+        f"  font-weight: {weight_range(face_file(family, subset))};\n"
         "  font-display: swap;\n"
-        f"  src: url('/fonts/{slug(family)}-{subset}.woff2') format('woff2');\n"
+        f"  src: url('{face_url(family, subset)}') format('woff2');\n"
         f"  unicode-range: {SUBSETS[subset]};\n"
         "}\n"
     )
@@ -355,9 +405,9 @@ def rewrite_index(display: str, mono: str) -> str:
     """Preload exactly the two latin cuts the page paints with."""
     html = (WEB / "index.html").read_text(encoding="utf-8")
     block = (
-        f'<link rel="preload" href="/fonts/{slug(display)}-latin.woff2" '
+        f'<link rel="preload" href="{face_url(display, "latin")}" '
         'as="font" type="font/woff2" crossorigin>\n'
-        f'<link rel="preload" href="/fonts/{slug(mono)}-latin.woff2" '
+        f'<link rel="preload" href="{face_url(mono, "latin")}" '
         'as="font" type="font/woff2" crossorigin>'
     )
     pattern = re.compile(
@@ -376,7 +426,7 @@ def rewrite_sw(display: str, mono: str, bump_version: bool = True) -> str:
     file permanently stale against itself and the gate would never pass twice.
     """
     js = (WEB / "sw.js").read_text(encoding="utf-8")
-    names = [f'"/fonts/{slug(f)}-{s}.woff2"'
+    names = [f'"{face_url(f, s)}"'
              for f in (display, mono) for s in ("latin", "latin-ext")]
     line = "  " + ", ".join(names) + ",\n"
     pattern = re.compile(r'(?:  "/fonts/[^\n]*\n)+')
@@ -428,9 +478,8 @@ def stale_faces(display: str, mono: str) -> list[Path]:
     this app while rendering nothing - each one preloaded at the top of the
     critical path - because a face was replaced and its files were left behind.
     """
-    keep = {f"{slug(f)}-{s}.woff2" for f in (display, mono)
-            for s in ("latin", "latin-ext")}
-    return sorted(p for p in FONT_DIR.glob("*.woff2") if p.name not in keep)
+    keep = {face_file(f, s) for f in (display, mono) for s in SUBSETS}
+    return sorted(p for p in FONT_DIR.glob("*.woff2") if p not in keep)
 
 
 def planned(display: str, mono: str, kind: str, scale: float, sizes,
@@ -473,14 +522,18 @@ def main(argv: list[str] | None = None) -> int:
         ap.error("no families known - pass --display and --mono once, and "
                  "tools/fonts.json will remember them")
 
-    ui_latin = FONT_DIR / f"{slug(display)}-latin.woff2"
-
     if args.check:
-        scale = type_scale(ui_latin) if ui_latin.is_file() else 1.0
+        missing = [f"{f} {s}" for f in (display, mono) for s in SUBSETS
+                   if face_file(f, s) is None]
+        if missing:
+            for m in missing:
+                print(f"no content-hashed woff2 for {m} in web/fonts/", file=sys.stderr)
+            print("run: python tools/gen_fonts.py", file=sys.stderr)
+            return 1
+        scale = type_scale(face_file(display, "latin"))
         # Sizes are only used in a comment; read them off what is on disk so a
         # check does not need the network.
-        sizes = {f: {s: (FONT_DIR / f"{slug(f)}-{s}.woff2").stat().st_size
-                     for s in SUBSETS if (FONT_DIR / f"{slug(f)}-{s}.woff2").is_file()}
+        sizes = {f: {s: face_file(f, s).stat().st_size for s in SUBSETS}
                  for f in (display, mono)}
         stale = [p.relative_to(ROOT)
                  for p, want in planned(display, mono, kind, scale, sizes,
@@ -501,8 +554,9 @@ def main(argv: list[str] | None = None) -> int:
     for family in (display, mono):
         sizes[family] = build_face(family, axes if family == display else None)
         for subset, n in sizes[family].items():
-            print(f"  {slug(family)}-{subset}.woff2  {n:,} bytes")
+            print(f"  {face_url(family, subset)}  {n:,} bytes")
 
+    ui_latin = face_file(display, "latin")
     scale = type_scale(ui_latin)
     print(f"  x-height {x_height_ratio(ui_latin):.3f} of em "
           f"-> --type-scale {scale}")

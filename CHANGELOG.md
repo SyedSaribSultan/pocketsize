@@ -194,6 +194,13 @@ This project follows [Semantic Versioning](https://semver.org/).
   from a violation.
 
 ### Changed
+- **Fonts are named after their own bytes.** `tools/gen_fonts.py` now writes
+  `web/fonts/<face>-<subset>.<hash>.woff2` and points `fonts.css`, the
+  preloads on every page and the service worker's precache at those names.
+  `/fonts/` is served `immutable` for a year and cache-first offline, which was
+  only honest while a file never changed in place - and one already had.
+  `--check` fails a woff2 whose name no longer matches its contents. Service
+  worker cache bumped to v21.
 - **Both interfaces wear a new skin, and not one line of it is a new colour in
   a component sheet.** The palette is PostHog's — a warm eggshell ground in
   light, deliberately cool blue-charcoal in dark, never white-on-black — and the
