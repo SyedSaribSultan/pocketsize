@@ -300,6 +300,10 @@ code, which is the point of building all four.
   ranges to a screen reader, but they carried no value (WCAG 4.1.2). They now
   have `aria-valuemin`/`aria-valuemax` and an `aria-valuenow`/`aria-valuetext`
   kept current on drag, arrow keys, reset and window resize.
+- **A thumbnail no longer writes a wrong size onto its picture.** `makeThumb`
+  read `bmp.width`/`bmp.height` after `bmp.close()` - which reads 0 - from a
+  bitmap that had been decoded at thumbnail scale anyway. The natural size now
+  comes only from `measure()`, which reads the full-resolution image.
 - **The browser silently ignored size limits.** The page computed the byte
   ceiling for a destination and then dropped it before the worker saw it, and
   the worker had no cap logic at all — so somebody choosing "Discord or group

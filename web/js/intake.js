@@ -40,12 +40,10 @@ async function makeThumb(item) {
     ctx.drawImage(bmp,
       (side - bmp.width * scale) / 2, (side - bmp.height * scale) / 2,
       bmp.width * scale, bmp.height * scale);
+    /* No natural size from here: this bitmap was decoded at thumbnail scale,
+       and once closed its width and height read 0. measure() learns the real
+       size from the full-resolution <img>. */
     bmp.close?.();
-
-    /* The natural size, learned here rather than waited for. The engine reports it
-       too, but the stage needs a frame the moment the original is painted - which
-       is before any encoder has been asked for anything. */
-    if (!item.width) { item.width = bmp.width; item.height = bmp.height; }
 
     const blob = await new Promise((r) => c.toBlob(r, "image/png"));
     if (blob && state.byId.has(item.id)) {
