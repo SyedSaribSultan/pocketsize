@@ -194,6 +194,12 @@ This project follows [Semantic Versioning](https://semver.org/).
   from a violation.
 
 ### Changed
+- **The licence file says which builds ship, and covers the fonts.**
+  `web/vendor/LICENSES.md` now records the jSquash release each codec came from
+  (@jsquash/jpeg 1.6.0, oxipng 2.3.0, avif 2.1.1, webp 1.5.0 - each `.wasm`
+  matches that tarball byte for byte), and carries the SIL OFL 1.1 text with the
+  copyright notices for Instrument Serif and Geist Mono, which the subsetted
+  woff2 files had been shipped without.
 - **CI cannot change underneath a commit that did not change.** Every GitHub
   Action is pinned to a full commit SHA (tag kept in a comment), every
   `pip install` in CI - ruff included - goes through the exact pins in
