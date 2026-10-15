@@ -1,0 +1,26 @@
+# Pocketsize
+
+> Free image compressor that runs entirely in the browser. Nothing is uploaded: the codecs (MozJPEG, OxiPNG, libwebp, libaom AVIF, via jSquash WebAssembly) and the SSIMULACRA 2 quality metric run on the visitor's own device. Each image is encoded several ways, every version is decoded and scored against the original, and the smallest one that still meets the chosen visual-match floor is kept, with the before/after evidence on screen.
+
+Key facts:
+
+- Input: PNG, JPEG, WebP, AVIF, GIF, BMP, TIFF. Output: JPEG, PNG, PNG-8, WebP, WebP lossless or AVIF, whichever is smallest at the quality floor.
+- Default floor: SSIMULACRA 2 score 90 (visually lossless). Optional size caps (for example 50 KB, 100 KB or 1 MB) and resize limits.
+- Works offline after the first visit (service worker). No account. Batches download as a zip with a written report.
+- Privacy is enforced, not promised: the Content-Security-Policy allows no third-party connections.
+- Open source: https://github.com/SyedSaribSultan/pocketsize
+
+## Pages
+
+- [Pocketsize](https://pocketsize.syedsarib.com/): the compressor itself
+- [How Pocketsize proves nothing is uploaded](https://pocketsize.syedsarib.com/nothing-is-uploaded): network panel, CSP and offline test
+- [Compress an image to 50 KB](https://pocketsize.syedsarib.com/compress-to-50kb)
+- [Compress an image to 100 KB](https://pocketsize.syedsarib.com/compress-to-100kb)
+- [Compress an image to 200 KB](https://pocketsize.syedsarib.com/compress-to-200kb)
+- [Compress an image to 1 MB](https://pocketsize.syedsarib.com/compress-to-1mb)
+- [Compress JPEG](https://pocketsize.syedsarib.com/compress-jpeg)
+- [Compress PNG](https://pocketsize.syedsarib.com/compress-png)
+- [Compress WebP](https://pocketsize.syedsarib.com/compress-webp)
+- [Convert PNG to AVIF](https://pocketsize.syedsarib.com/png-to-avif)
+- [Compress images for email](https://pocketsize.syedsarib.com/compress-for-email)
+- [Bulk image compressor](https://pocketsize.syedsarib.com/bulk-image-compressor)

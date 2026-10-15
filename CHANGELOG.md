@@ -6,6 +6,10 @@ This project follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **`/.well-known/security.txt` and `/llms.txt`.** A place to report a
+  security problem (RFC 9116, expires 2027-10-15 - renew it), and a plain
+  summary of what the app is and which pages it has, for language-model
+  crawlers.
 - **Video, answering the same one question.** A video answers "where is this
   going?" exactly the way a picture does, so it lives in the same destination
   table rather than a parallel one, goes in the same folder, and comes out the

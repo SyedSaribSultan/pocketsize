@@ -1,0 +1,7 @@
+# Pocketsize runs entirely in the browser: no server, no accounts, no uploads.
+# Reports about the site, its headers, or the code at
+# https://github.com/SyedSaribSultan/pocketsize are welcome.
+Contact: mailto:syedsaribsultan@gmail.com
+Expires: 2027-10-15T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://pocketsize.syedsarib.com/.well-known/security.txt
