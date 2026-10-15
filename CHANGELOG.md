@@ -304,6 +304,15 @@ code, which is the point of building all four.
   read `bmp.width`/`bmp.height` after `bmp.close()` - which reads 0 - from a
   bitmap that had been decoded at thumbnail scale anyway. The natural size now
   comes only from `measure()`, which reads the full-resolution image.
+- **A decompression bomb is refused instead of decoded.** A small file can
+  declare a huge canvas - `tests/web/fixtures/bomb.png` is 49 KB and declares
+  20,000 x 20,000 pixels, 1.6 GB of RGBA. `web/js/imagedims.js` reads the
+  declared size from the header (PNG IHDR, JPEG SOF, WebP VP8/VP8L/VP8X, GIF,
+  BMP, AVIF `ispe`) and anything over 100 megapixels fails with its size in
+  the message. The page checks before drawing a thumbnail or the original;
+  the worker checks again before decoding. `tests/web/probe_bomb.mjs` holds the
+  parser to files a real encoder wrote and drops the bomb in real Chrome; it
+  runs in CI. Service worker cache bumped to v22.
 - **The browser silently ignored size limits.** The page computed the byte
   ceiling for a destination and then dropped it before the worker saw it, and
   the worker had no cap logic at all — so somebody choosing "Discord or group

@@ -117,4 +117,51 @@ img.crop((0, 0, 280, 900)).resize((280, 1800)).save(OUT / "portrait-tall.png")
 # the first bytes is not enough to reject it.
 (OUT / "corrupt.jpg").write_bytes(b"\xff\xd8\xff\xe0" + b"not really a jpeg" * 8)
 
+# Header-size fixtures for probe_bomb.mjs, in their own folder so nothing that
+# uploads "the fixtures" picks them up. Each is named <width>x<height>.<kind>,
+# so the probe knows the answer without a second source of truth. They are
+# written by a real encoder, because a hand-built header only proves the parser
+# agrees with whoever wrote the header.
+DIMS = OUT / "dims"
+DIMS.mkdir(exist_ok=True)
+for old in DIMS.iterdir():
+    old.unlink()
+wide = Image.new("RGB", (1234, 567), (10, 200, 30))
+tall = Image.new("RGBA", (321, 4321), (10, 200, 30, 128))
+wide.save(DIMS / "1234x567.png")
+wide.save(DIMS / "1234x567.gif")
+wide.save(DIMS / "1234x567.bmp")
+wide.save(DIMS / "1234x567.webp")                              # VP8
+wide.save(DIMS / "1234x567.lossless.webp", lossless=True)      # VP8L
+tall.save(DIMS / "321x4321.alpha.webp")                        # VP8X
+# The frame header behind 60 KB of EXIF, where a reader that only looks at the
+# first few bytes would give up.
+wide.save(DIMS / "1234x567.exif.jpg", exif=b"Exif\x00\x00" + bytes(60000))
+wide.save(DIMS / "1234x567.progressive.jpg", progressive=True)
+try:
+    tall.save(DIMS / "321x4321.avif")
+except Exception as exc:  # noqa: BLE001 - a Pillow without AVIF says so
+    print("no AVIF dims fixture:", exc)
+
+# A decompression bomb: a 49 KB PNG that declares 20,000 x 20,000 pixels -
+# 400 megapixels, 1.6 GB once decoded to RGBA. One-bit greyscale of zeros
+# deflates to almost nothing, which is exactly what makes the real ones work.
+import struct  # noqa: E402
+import zlib  # noqa: E402
+
+
+def _chunk(kind: bytes, data: bytes) -> bytes:
+    return (struct.pack(">I", len(data)) + kind + data
+            + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF))
+
+
+BOMB = 20000
+raw = (b"\x00" + bytes(BOMB // 8)) * BOMB
+(OUT / "bomb.png").write_bytes(
+    b"\x89PNG\r\n\x1a\n"
+    + _chunk(b"IHDR", struct.pack(">IIBBBBB", BOMB, BOMB, 1, 0, 0, 0, 0))
+    + _chunk(b"IDAT", zlib.compress(raw, 9))
+    + _chunk(b"IEND", b""))
+del raw
+
 print("fixtures:", sorted(p.name for p in OUT.iterdir()))

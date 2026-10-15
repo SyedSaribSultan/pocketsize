@@ -47,6 +47,11 @@ const AVIF_QUALITY = [30, 38, 45, 52, 58, 64, 70, 76, 82, 88, 93, 96];
  * committed; nothing in this worker restates any of those values. */
 importScripts("destinations.js");
 
+/* imageDims() / tooManyPixels(): the declared pixel size, read from the header
+ * so a decompression bomb is refused before it is decoded. Shared with the
+ * page, which runs the same check before drawing a thumbnail. */
+importScripts("js/imagedims.js");
+
 // SSIM constants for 8-bit data (Wang et al. 2004)
 const C1 = (0.01 * 255) ** 2;
 const C2 = (0.03 * 255) ** 2;
@@ -1365,6 +1370,14 @@ async function runJob(msg) {
       }, [buffer]);
       return;
     }
+  }
+
+  /* Before anything is decoded: a header that declares more pixels than this
+     tab can hold is refused with its size, not discovered by crashing. */
+  const tooBig = tooManyPixels(buffer);
+  if (tooBig) {
+    post({ type: "failed", error: tooBig });
+    return;
   }
 
   post({ type: "progress", stage: "decoding", frac: 0 });

@@ -17,6 +17,11 @@ import { renderQueue } from "./queue.js";
 import { renderStage } from "./compare.js";
 import { reflectPlan } from "./settings.js";
 import { scheduleRender } from "./render.js";
+import "./imagedims.js";   // classic script shared with the worker: sets tooManyPixels
+
+/* Enough of the file to reach its declared size: a JPEG's frame header can sit
+   behind several 64 KB metadata segments. */
+const HEADER_BYTES = 1 << 20;
 
 /* A small square, decoded straight to thumbnail scale. Decoding a 12MP original
  * in full on the main thread just to draw it at 36px was the single heaviest
@@ -67,6 +72,33 @@ function measure(item) {
   probe.src = item.beforeURL;
 }
 
+/** Refuse a decompression bomb before anything on this page decodes it.
+ *
+ *  The header is read first; only a file that is not declared too big gets its
+ *  size measured and its thumbnail drawn. One that is fails with its size in
+ *  the message, and its original is withdrawn from the stage. The worker runs
+ *  the same check on its own copy, so whichever sees it first, the answer is
+ *  the same. */
+async function guardThenDraw(item) {
+  let tooBig = null;
+  try {
+    tooBig = globalThis.tooManyPixels(await item.file.slice(0, HEADER_BYTES).arrayBuffer());
+  } catch { /* unreadable here: the worker's read reports it */ }
+  if (!state.byId.has(item.id)) return;
+  if (!tooBig) {
+    measure(item);
+    makeThumb(item);
+    return;
+  }
+  if (item.beforeURL) URL.revokeObjectURL(item.beforeURL);
+  item.beforeURL = null;
+  if (item.status === "queued") {
+    item.status = "failed";
+    item.error = tooBig;
+  }
+  scheduleRender();
+}
+
 /** "3 images", "1 image" - the noun agrees with the count. */
 export function countWords(images) {
   return `${images} image${images === 1 ? "" : "s"}`;
@@ -112,8 +144,7 @@ export function addFiles(files) {
     state.byId.set(item.id, item);
     if (!state.selected) select(item.id);
     images += 1;
-    measure(item);
-    makeThumb(item);
+    guardThenDraw(item);
   }
 
   beginBatch();

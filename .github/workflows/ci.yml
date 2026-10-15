@@ -65,6 +65,11 @@ jobs:
         run: node tests/web/verify_tokens.mjs
       - name: Build the web fixtures
         run: python tests/web/make_web_fixtures.py
+      - name: A picture too big to hold is refused before it is decoded
+        # Header sizes held to a real encoder in every format, then a 400 MP
+        # PNG dropped beside an ordinary one: it must fail with its size, and
+        # the ordinary one must still finish.
+        run: node tests/web/probe_bomb.mjs
       - name: The promise suite, in real Chrome under the real CSP
         # Dozens of assertions against real app state: the fresh-profile
         # quality floor is exactly 90 (an init bug once clamped it to 99 and

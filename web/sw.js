@@ -20,7 +20,7 @@
 
 "use strict";
 
-const VERSION = "v21";
+const VERSION = "v22";
 const SHELL = `pocketsize-shell-${VERSION}`;
 const HEAVY = `pocketsize-heavy-${VERSION}`;
 
@@ -36,7 +36,7 @@ const PRECACHE = [
   "/destinations.js",
   "/js/destinations-bridge.js", "/js/theme.js", "/js/dom.js", "/js/format.js",
   "/js/state.js", "/js/views.js", "/js/render.js", "/js/settings.js",
-  "/js/intake.js", "/js/engine.js", "/js/queue.js", "/js/compare.js",
+  "/js/intake.js", "/js/imagedims.js", "/js/engine.js", "/js/queue.js", "/js/compare.js",
   "/js/save.js", "/js/panels.js", "/js/picker.js", "/js/main.js",
   "/worker.js",
   "/ss2.module.js", "/ss2.js",

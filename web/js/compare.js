@@ -321,6 +321,9 @@ async function ensureDiff() {
 function paintMedia(it, hasResult) {
   if (it.beforeURL && $("img-before").getAttribute("src") !== it.beforeURL) {
     $("img-before").src = it.beforeURL;
+  } else if (!it.beforeURL) {
+    // Withdrawn (a file too big to open) - never leave another item's original.
+    $("img-before").removeAttribute("src");
   }
   /* Reconcile to what this item actually has. Guarding the assignment on
      `hasResult` used to leave the element holding the previous item's blob URL,
