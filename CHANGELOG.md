@@ -295,6 +295,11 @@ were each observed failing before they were fixed; most of the rest were turned
 up by a benchmark, a probe, a corpus or an audit rather than by reading the
 code, which is the point of building all four.
 
+- **The two resize handles say where they are.** `#side-handle` and
+  `#queue-handle` are focusable `role="separator"` controls, which makes them
+  ranges to a screen reader, but they carried no value (WCAG 4.1.2). They now
+  have `aria-valuemin`/`aria-valuemax` and an `aria-valuenow`/`aria-valuetext`
+  kept current on drag, arrow keys, reset and window resize.
 - **The browser silently ignored size limits.** The page computed the byte
   ceiling for a destination and then dropped it before the worker saw it, and
   the worker had no cap logic at all — so somebody choosing "Discord or group

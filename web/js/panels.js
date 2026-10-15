@@ -44,8 +44,24 @@ function sizeOf(cfg, panel) {
   return cfg === SIDE ? r.width : r.height;
 }
 
+/* A separator that can be moved is a range, and assistive tech reads it as one
+ * only if it says where it is: aria-valuemin/max come from cfg, aria-valuenow
+ * is the panel's rendered size, clamped into that range (an automatic size can
+ * sit outside it). Kept current on every drag step, key press, reset and
+ * window resize. */
+function announce(handle, panel, cfg) {
+  const now = Math.round(Math.min(cfg.max, Math.max(cfg.min, sizeOf(cfg, panel))));
+  handle.setAttribute("aria-valuemin", String(cfg.min));
+  handle.setAttribute("aria-valuemax", String(cfg.max));
+  handle.setAttribute("aria-valuenow", String(now));
+  handle.setAttribute("aria-valuetext", `${now} pixels`);
+}
+
 function bindHandle(handle, panel, cfg, sign) {
   let from = null;   // { at: pointer coord, size: panel size when the drag began }
+  const sync = () => announce(handle, panel, cfg);
+  sync();
+  window.addEventListener("resize", sync, { passive: true });
 
   handle.addEventListener("pointerdown", (e) => {
     e.preventDefault();
@@ -57,12 +73,13 @@ function bindHandle(handle, panel, cfg, sign) {
     if (!from) return;
     const delta = ((cfg === SIDE ? e.clientX : e.clientY) - from.at) * sign;
     put(cfg, from.size + delta);
+    sync();
   });
   const drop = () => { from = null; delete handle.dataset.dragging; };
   handle.addEventListener("pointerup", drop);
   handle.addEventListener("pointercancel", drop);
 
-  handle.addEventListener("dblclick", () => reset(cfg));
+  handle.addEventListener("dblclick", () => { reset(cfg); sync(); });
 
   handle.addEventListener("keydown", (e) => {
     const grow = cfg === SIDE ? "ArrowRight" : "ArrowUp";
@@ -70,9 +87,11 @@ function bindHandle(handle, panel, cfg, sign) {
     if (e.key === grow || e.key === shrink) {
       e.preventDefault();
       put(cfg, sizeOf(cfg, panel) + (e.key === grow ? cfg.step : -cfg.step));
+      sync();
     } else if (e.key === "Home") {
       e.preventDefault();
       reset(cfg);
+      sync();
     }
   });
 }
