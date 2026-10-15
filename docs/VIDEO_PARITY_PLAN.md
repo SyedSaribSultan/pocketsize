@@ -1,3 +1,5 @@
+> **Historical record.** This plan is implemented. It names files that no longer exist (`pocketsize/`, `tools/gen_destinations.py`, `tools/sync_webui_assets.py`); the app is now `web/` only. See CONTRIBUTING.md for the current generators.
+
 # Video Parity & Resource Plan — 2026-08-20
 
 > **Owner instruction, 2026-08-20:** "just do what's recommended from the

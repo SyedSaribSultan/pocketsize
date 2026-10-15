@@ -194,6 +194,12 @@ This project follows [Semantic Versioning](https://semver.org/).
   from a violation.
 
 ### Changed
+- **The contributor docs name the generators that exist.** CLAUDE.md and
+  CONTRIBUTING.md pointed at `pocketsize/destinations.py`,
+  `tools/gen_destinations.py`, `tools/sync_webui_assets.py` and
+  `pocketsize/webui/`, all deleted with the desktop app. They now list
+  `gen_ss2_module`, `gen_seo_pages`, `gen_fonts` and `gen_tokens_subset`, and
+  the `docs/*PLAN.md` files carry a note that they are historical.
 - **Fonts are named after their own bytes.** `tools/gen_fonts.py` now writes
   `web/fonts/<face>-<subset>.<hash>.woff2` and points `fonts.css`, the
   preloads on every page and the service worker's precache at those names.

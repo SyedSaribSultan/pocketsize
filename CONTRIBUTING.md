@@ -107,14 +107,12 @@ which by this project's own rule makes it a convention rather than a guarantee
 `web/destinations.js` was generated from a Python source that no longer ships.
 It is now the reference itself, and is edited directly.
 
-| Output | Source |
-| --- | --- |
-| `web/destinations.js` | `pocketsize/destinations.py` |
-| `web/ss2.module.js` | `web/ss2.js` |
-| `web/<slug>.html` + `web/sitemap.xml` | `web/index.html` |
-| `pocketsize/webui/heyoz-tokens.css` | `web/heyoz-tokens.css` |
-| `pocketsize/webui/fonts.css` + `fonts/` | `web/fonts.css` + `web/fonts/` |
-| `pocketsize/webui/favicon.svg` | `web/favicon.svg` |
+| Output | Source | Generator |
+| --- | --- | --- |
+| `web/ss2.module.js` | `web/ss2.js` | `tools/gen_ss2_module.py` |
+| `web/<slug>.html` + `web/sitemap.xml` | `web/index.html` | `tools/gen_seo_pages.py` |
+| `web/fonts.css`, `web/fonts/*.<hash>.woff2`, font preloads, `web/sw.js` precache | `tools/fonts.json` | `tools/gen_fonts.py` |
+| `web/heyoz-tokens.css` | `vendor/heyoz-tokens.css` | `tools/gen_tokens_subset.py` |
 
 `web/ss2.module.js` is there for a reason worth knowing before you are tempted
 to "simplify" it away. The image worker is a classic worker and pulls the metric
