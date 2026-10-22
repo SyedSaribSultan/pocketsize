@@ -4,12 +4,12 @@
 # commit that did not change. Dependabot proposes updates to these pins.
 #
 # Install:  python -m pip install -r tools/requirements-dev.txt -c tools/requirements-dev.constraints.txt
-pillow==12.3.0
+pillow==13.0.0
 fonttools==4.67.0
 brotli==1.2.0
 zopfli==0.4.3
 numpy==2.5.4
 scipy==1.18.1
 ssimulacra2==0.3.0
-ruff==0.17.0
+ruff==0.17.1
 pillow-avif-plugin==1.6.0

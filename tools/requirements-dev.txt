@@ -16,9 +16,9 @@
 # Install:  python -m pip install -r tools/requirements-dev.txt
 #                             -c tools/requirements-dev.constraints.txt
 # The constraints file pins exact versions; CI uses it for every install.
-pillow>=10.0
+pillow>=13.0.0
 fonttools[woff]>=4.40
 numpy>=1.24
 ssimulacra2>=0.3
 scipy>=1.10
-ruff>=0.5
+ruff>=0.17.1
