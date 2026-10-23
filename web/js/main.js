@@ -14,7 +14,7 @@
 import { $, setText, show, toast, toastAside } from "./dom.js";
 import { bindPanels } from "./panels.js";
 import { bindPickers } from "./picker.js";
-import { state, current, select, isReady, isBusy, totals } from "./state.js";
+import { state, current, select, isReady, isBusy, totals, ORIGINAL_PICK } from "./state.js";
 import { scheduleRender, renderNow } from "./render.js";
 import { human, splitName } from "./format.js";
 import {
@@ -24,7 +24,7 @@ import {
 import {
   startEngine, dispatch, requeue, removeItems, cancelAll, setBatchEndHandler, pool,
   readingCount, readingPeakSeen, poolPlan, backgroundPlan,
-  holdWork, warmCodecs, warmAvif,
+  holdWork, warmCodecs, warmAvif, batchStartedAtMs,
 } from "./engine.js";
 import { addFiles, filesFromDataTransfer, countItemWords } from "./intake.js";
 import { chooseCandidate } from "./views.js";
@@ -404,9 +404,21 @@ function bindStage() {
     $("out-name").blur();
   });
 
-  $("dl-one").addEventListener("click", () => downloadOne(current()));
-  $("copy-one").addEventListener("click", () => copyImage(current()));
-  $("save-btn").addEventListener("click", downloadAll);
+  $("dl-one").addEventListener("click", () => {
+    const it = current();
+    if (it && isReady(it)) track("download_clicked", savedShape("one", [it]));
+    downloadOne(it);
+  });
+  $("copy-one").addEventListener("click", () => {
+    const it = current();
+    if (it && isReady(it)) track("download_clicked", savedShape("copy", [it]));
+    copyImage(it);
+  });
+  $("save-btn").addEventListener("click", () => {
+    const done = state.items.filter(isReady);
+    if (done.length) track("download_clicked", savedShape(done.length > 1 ? "zip" : "one", done));
+    downloadAll();
+  });
 
   /* Focus mode: the comparison and nothing else. The regions are hidden, not
      destroyed - the queue keeps working behind it. */
@@ -533,7 +545,79 @@ bindKeys();
 $("brand-btn").addEventListener("click", () => $("help").showModal());
 $("help-close").addEventListener("click", () => $("help").close());
 
+/* ---- usage analytics ------------------------------------------------------
+ * Counts and sizes only - never a file name, a path or a pixel. The sink,
+ * window.pocketsizeTrack, exists only on the production host (js/analytics.js),
+ * so everywhere else, tests included, these calls do nothing. */
+function track(event, props) {
+  try { window.pocketsizeTrack?.(event, { platform: "web", ...props }); } catch { /* never the app's problem */ }
+}
+
+/** A file's type as a label: its MIME type, or failing that a short extension.
+ *  Never the name itself. */
+function inputFormat(it) {
+  const t = (it.file && it.file.type) || "";
+  if (/^image\/[a-z0-9.+-]{1,30}$/i.test(t)) return t.toLowerCase();
+  const ext = splitName(it.name).ext.replace(/^\./, "").toLowerCase();
+  return /^[a-z0-9]{1,5}$/.test(ext) ? ext : "unknown";
+}
+
+const outputFormat = (it) => (it.fmt === ORIGINAL_PICK ? "original" : String(it.fmt || "unknown"));
+
+function savedShape(kind, items) {
+  let input = 0, output = 0;
+  for (const it of items) { input += it.originalBytes || 0; output += it.newBytes || 0; }
+  return {
+    kind, file_count: items.length, input_bytes: input, output_bytes: output,
+    saved_bytes: Math.max(0, input - output),
+    output_formats: [...new Set(items.map(outputFormat))].sort(),
+  };
+}
+
+/* One event per finished run, over the results that run produced. A result is
+   reported once: a later run (a settings change redoing everything) reports
+   its own fresh results. */
+const reported = new WeakSet();
+function reportRun() {
+  const fresh = state.items.filter((it) => isReady(it) && it.result && !reported.has(it.result));
+  const failed = state.items.filter((it) => it.status === "failed" && !reported.has(it));
+  if (!fresh.length && !failed.length) return;
+  for (const it of fresh) reported.add(it.result);
+  for (const it of failed) reported.add(it);
+  let input = 0, output = 0, resized = 0, missed = 0, work = 0;
+  for (const it of fresh) {
+    input += it.originalBytes || 0;
+    output += it.newBytes || 0;
+    if (it.outW && (it.outW !== it.width || it.outH !== it.height)) resized += 1;
+    if (it.missedSize) missed += 1;
+    work += it.elapsedMs || 0;
+  }
+  const s = state.settings;
+  track("compression_completed", {
+    file_count: fresh.length,
+    failed_count: failed.length,
+    input_bytes: input,
+    output_bytes: output,
+    saved_bytes: Math.max(0, input - output),
+    saved_percent: input ? Math.round((1000 * (input - output)) / input) / 10 : 0,
+    input_formats: [...new Set(fresh.concat(failed).map(inputFormat))].sort(),
+    output_formats: [...new Set(fresh.map(outputFormat))].sort(),
+    target: String(s.target),
+    quality_target: s.qualityTarget,
+    max_dimension: s.maxDimension,
+    dimension_mode: String(s.dimensionMode),
+    size_cap_bytes: s.sizeTarget,
+    format_choice: s.formats ? s.formats.join("+") : "auto",
+    lossless: !!s.lossless,
+    resized_count: resized,
+    missed_size_count: missed,
+    duration_ms: Math.round(performance.now() - batchStartedAtMs()),
+    work_ms: Math.round(work),
+  });
+}
+
 setBatchEndHandler(() => {
+  reportRun();
   const t = totals();
   if (!t.ready) return;
   /* The outcome, framed as the person's own gain - this is the moment the
@@ -548,7 +632,7 @@ setBatchEndHandler(() => {
      worth - a prompt before value is a prompt declined. */
   if (installable) {
     hintOnce("install", "Install Pocketsize? It works fully offline — "
-      + "nothing ever leaves your device.", {
+      + "your pictures never leave your device.", {
       label: "Install",
       onAction: () => { installable.prompt(); installable = null; },
     });

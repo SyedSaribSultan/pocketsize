@@ -94,6 +94,11 @@
      the script always stamps an answer; there is no unstamped state. -->
 <script src="/js/theme.js"></script>
 
+<!-- Usage analytics: page visits and anonymous totals (how many pictures, how
+     many bytes saved) - never a file name, a path or a pixel. External because
+     the CSP bans inline script; does nothing off the production host. -->
+<script src="/js/analytics.js" async></script>
+
 <!-- The HeyOz token layer and its self-hosted faces, loaded before base.css,
      which aliases this app's six-name vocabulary onto them. heyoz-tokens.css
      is a vendored copy - see GUIDE.md; edit it upstream, never here. -->
@@ -466,7 +471,10 @@
        and no account — the compression runs on your own device, inside your
        browser. That is not a promise to take on trust:
        <a href="/nothing-is-uploaded">here is how to check it yourself, in
-       about a minute</a>. It is also why the whole app keeps working with no
+       about a minute</a>. The only thing the page sends is anonymous usage
+       counts — visits, and totals like how many pictures were done and how
+       many megabytes were saved — never a picture or its name. Working on
+       your device is also why the whole app keeps working with no
        internet after your first visit, and why you can install it like an app
        and open images with it straight from your file manager.</p>
     <p>It can shrink big photos to a pixel limit you choose, or work to a size
@@ -501,8 +509,8 @@
 <dialog id="help" aria-labelledby="help-title">
   <h3 id="help-title">Pocketsize</h3>
   <p>Every picture is saved several ways, measured against the original, and
-     the smallest one that still looks right is kept. Nothing ever leaves your
-     computer — after one visit, it even works offline.</p>
+     the smallest one that still looks right is kept. Your pictures never leave
+     your computer — after one visit, it even works offline.</p>
   <div id="help-keys">
     <div><kbd>Space</kbd><span>hold to flick between before and after — the fastest way to spot a difference</span></div>
     <div><kbd>D</kbd><span>difference heatmap</span></div>

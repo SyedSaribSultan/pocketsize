@@ -86,6 +86,32 @@ class EveryPageStandsAlone(unittest.TestCase):
                            if 'type="application/ld+json"' in t]
                 self.assertEqual(inline, allowed)
 
+    def test_the_usage_counter_is_on_every_page_and_is_the_only_outside_origin(self):
+        """Analytics (visits and anonymous totals, never a file) is the one
+        thing allowed to leave the device. Every served page loads it from
+        the one external file, and the CSP names exactly one outside origin -
+        the counter's - so anything else trying to leave is still blocked by
+        the browser, and the proof page's claim stays literally true."""
+        for name in ALL_PAGES:
+            with self.subTest(page=name):
+                self.assertIn('<script src="/js/analytics.js" async></script>', _read(name))
+        vercel = json.loads(_read("vercel.json"))
+        csp = next(h["value"] for rule in vercel["headers"] for h in rule["headers"]
+                   if h["key"] == "Content-Security-Policy")
+        outside = set(re.findall(r"https?://[^\s;']+", csp))
+        self.assertEqual(outside, {"https://e.syedsarib.com"})
+        directives = dict(d.strip().split(" ", 1) for d in csp.split(";") if " " in d.strip())
+        self.assertEqual(directives["connect-src"], "'self' https://e.syedsarib.com")
+        self.assertIn("form-action 'none'", csp)
+        self.assertIn("connect-src 'self' https://e.syedsarib.com",
+                      _read("nothing-is-uploaded.html"),
+                      "the proof page quotes the policy the server actually sends")
+        script = _read("js/analytics.js")
+        self.assertIn('location.hostname !== "pocketsize.syedsarib.com"', script,
+                      "analytics must stay off local, CI and preview hosts")
+        self.assertIn('maskTextSelector: "*"', script)
+        self.assertIn("mask_all_text: true", script)
+
     def test_faq_schema_mirrors_the_visible_page(self):
         for name in GENERATED:
             html = _read(name)

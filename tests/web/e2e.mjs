@@ -58,6 +58,23 @@ try {
   page.on("console", (m) => { if (m.type() === "error") consoleErrors.push(m.text()); });
   page.on("pageerror", (e) => consoleErrors.push(String(e)));
 
+  /* Usage analytics, recorded at the app's one door to it. Locally the sink
+     does not exist (js/analytics.js runs on the production host only), so this
+     recorder stands in for it; against production (E2E_URL) it wraps the real
+     one. Either way it sees exactly what the app hands over - BEFORE the sink's
+     own sanitising - which is the stricter thing to hold to "no content". */
+  await page.evaluateOnNewDocument(() => {
+    window.__tracked = [];
+    let real = null;
+    const record = (event, props) => {
+      window.__tracked.push({ event, props: JSON.parse(JSON.stringify(props)) });
+      if (real) real(event, props);
+    };
+    Object.defineProperty(window, "pocketsizeTrack", {
+      configurable: true, get: () => record, set: (fn) => { real = fn; },
+    });
+  });
+
   await page.goto(BASE, { waitUntil: "networkidle0" });
 
   ok((await page.title()).includes("Pocketsize"), "page title");
@@ -152,6 +169,40 @@ try {
   console.log();
 
   const by = Object.fromEntries(items.map((i) => [i.name, i]));
+
+  /* ---- analytics: the shape of the run, never its content ----------------
+   * One compression_completed for the run, counting every file, carrying only
+   * numbers, booleans and short labels - and no fixture's name anywhere in
+   * anything handed to analytics. */
+  {
+    await new Promise((r) => setTimeout(r, 300));     // the batch-end handler
+    const tracked = await page.evaluate(() => window.__tracked);
+    const runs = tracked.filter((t) => t.event === "compression_completed");
+    ok(runs.length === 1, `one compression_completed for the run (got ${runs.length})`);
+    const p = runs[0]?.props || {};
+    console.log("  compression_completed:", JSON.stringify(p));
+    ok(p.file_count + p.failed_count === files.length,
+       `it counts every file (${p.file_count} done + ${p.failed_count} failed)`);
+    ok(p.input_bytes > p.output_bytes && p.saved_bytes === p.input_bytes - p.output_bytes,
+       "it carries the bytes in, out and saved");
+    ok(p.platform === "web" && typeof p.duration_ms === "number", "platform and duration ride along");
+    const ALLOWED = new Set(["platform", "file_count", "failed_count", "input_bytes",
+      "output_bytes", "saved_bytes", "saved_percent", "input_formats", "output_formats",
+      "target", "quality_target", "max_dimension", "dimension_mode", "size_cap_bytes",
+      "format_choice", "lossless", "resized_count", "missed_size_count", "duration_ms",
+      "work_ms"]);
+    const extra = Object.keys(p).filter((k) => !ALLOWED.has(k));
+    ok(extra.length === 0, `no property beyond the agreed aggregates${extra.length ? ": " + extra.join(", ") : ""}`);
+    const shapeOk = Object.values(p).every((v) => typeof v === "number" || typeof v === "boolean"
+      || (typeof v === "string" && v.length <= 40)
+      || (Array.isArray(v) && v.every((x) => typeof x === "string" && x.length <= 40)));
+    ok(shapeOk, "every property is a number, a boolean or a short label");
+    const blob = JSON.stringify(tracked).toLowerCase();
+    const leaked = files.flatMap((f) => [path.basename(f), path.basename(f, path.extname(f))])
+      .map((n) => n.toLowerCase()).filter((n) => n.length >= 4)
+      .filter((base) => blob.includes(base));
+    ok(leaked.length === 0, `no file name reaches analytics${leaked.length ? ": " + leaked.join(", ") : ""}`);
+  }
 
   ok(by["photo.png"].status === "done", "photo compressed");
   ok(by["photo.png"].newBytes < by["photo.png"].originalBytes, "photo smaller");
@@ -619,6 +670,12 @@ try {
   await page.click("#save-btn");
   await downloadDone;
   const zips = readdirSync(DL).filter((f) => f.endsWith(".zip"));
+  {
+    const dl = (await page.evaluate(() => window.__tracked))
+      .filter((t) => t.event === "download_clicked" && t.props.kind === "zip");
+    ok(dl.length === 1 && dl[0].props.file_count > 1 && !("names" in dl[0].props),
+       `download_clicked (zip) is counted, by number only (${JSON.stringify(dl[0]?.props)})`);
+  }
   ok(zips.length === 1, `zip downloaded (${zips.join(", ")})`);
   if (zips.length) {
     const size = statSync(path.join(DL, zips[0])).size;

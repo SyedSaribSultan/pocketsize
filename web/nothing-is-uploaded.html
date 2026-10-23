@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>How Pocketsize proves nothing is uploaded</title>
-<meta name="description" content="Don't take a privacy claim on trust. Watch the network panel stay silent, read the security policy that makes uploads impossible, and unplug the internet — the compressor keeps working.">
+<meta name="description" content="Don't take a privacy claim on trust. Watch the network panel, read the security policy that limits where the page can send anything, and unplug the internet — the compressor keeps working.">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#FFFFFF">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#070605">
@@ -13,7 +13,7 @@
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Pocketsize">
 <meta property="og:title" content="How Pocketsize proves nothing is uploaded">
-<meta property="og:description" content="Watch the network panel stay silent, read the security policy that makes uploads impossible, then unplug the internet — it keeps working.">
+<meta property="og:description" content="Watch the network panel, read the security policy that limits where the page can send anything, then unplug the internet — it keeps working.">
 <meta property="og:url" content="https://pocketsize.syedsarib.com/nothing-is-uploaded">
 <meta property="og:image" content="https://pocketsize.syedsarib.com/og.png">
 <meta property="og:image:width" content="1200">
@@ -21,7 +21,7 @@
 <meta property="og:image:alt" content="Pocketsize — compression that proves it didn't ruin your image. Nothing is uploaded.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="How Pocketsize proves nothing is uploaded">
-<meta name="twitter:description" content="Watch the network panel stay silent, read the security policy that makes uploads impossible, then unplug the internet — it keeps working.">
+<meta name="twitter:description" content="Watch the network panel, read the security policy that limits where the page can send anything, then unplug the internet — it keeps working.">
 <meta name="twitter:image" content="https://pocketsize.syedsarib.com/og.png">
 
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -29,6 +29,7 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
 <script src="/js/theme.js"></script>
+<script src="/js/analytics.js" async></script>
 <link rel="stylesheet" href="/heyoz-tokens.css">
 <link rel="stylesheet" href="/fonts.css">
 <link rel="stylesheet" href="/css/base.css">
@@ -52,30 +53,38 @@
        you three ways to verify it, each in about a minute, none requiring
        any technical background beyond pressing a key.</p>
 
-    <h2>1. Watch the network stay silent</h2>
+    <h2>1. Watch the network</h2>
     <p>Open <a href="/">Pocketsize</a>, then press <code>F12</code> (or
        right-click the page and choose "Inspect") and click the
        <strong>Network</strong> tab — this panel shows every single thing a
        page sends or receives, and it cannot be fooled. Now drop a photo in
        and compress it. What you will see: the page downloading its own
        machinery (files ending in <code>.js</code>, <code>.css</code>,
-       <code>.wasm</code>) — and your photo appearing nowhere. No POST, no
-       upload, no request carrying your file. The panel stays silent because
-       there is nothing to send: the encoders themselves were downloaded to
-       your machine, and your picture never leaves it.</p>
+       <code>.wasm</code>), a few small requests to
+       <code>e.syedsarib.com</code> — our usage counter, explained below —
+       and your photo appearing nowhere. No upload, no request carrying your
+       file or its name. Click one of the counter's requests and you will see
+       what it carries: that a page was visited, and totals such as how many
+       pictures were done and how many bytes were saved. There is nothing
+       else to send: the encoders themselves were downloaded to your machine,
+       and your picture never leaves it.</p>
 
-    <h2>2. Read the rule that makes uploading impossible</h2>
-    <p>Not uploading is a choice; being <em>unable</em> to upload is a
-       guarantee, and Pocketsize ships with the guarantee. Every page is
+    <h2>2. Read the rule that limits where the page can send anything</h2>
+    <p>Not uploading is a choice; being <em>unable</em> to send things to a
+       stranger is a guarantee, and Pocketsize ships with it. Every page is
        delivered with a security header called a Content Security Policy
        that your browser itself enforces. Ours says, among other things:</p>
-    <p><code>default-src 'none'; connect-src 'self'; form-action 'none'</code></p>
+    <p><code>default-src 'none'; connect-src 'self' https://e.syedsarib.com; form-action 'none'</code></p>
     <p>In plain words: this page may talk to its own address to fetch its own
-       files, and to nowhere else, ever. If the code tried to send your
-       picture anywhere — because of a bug, a compromise, or a change of
-       heart — <strong>the browser would block the attempt</strong>. You can
-       read this header yourself in the same Network panel: click the first
-       request, look under "Response Headers" for
+       files, and to one other address — <code>e.syedsarib.com</code>, our
+       usage counter — and to nowhere else, ever. If the code tried to send
+       your picture to any other address — because of a bug, a compromise,
+       or a change of heart — <strong>the browser would block the
+       attempt</strong>. For the counter's one address, the guarantee is the
+       code itself, which is open and short (<code>js/analytics.js</code>),
+       and the Network panel, where every request it sends can be read. You
+       can read the header itself in the same panel: click the first request,
+       look under "Response Headers" for
        <code>content-security-policy</code>.</p>
 
     <h2>3. Unplug the internet</h2>
@@ -85,14 +94,18 @@
        at all, because after your first visit it lives on your device. A tool
        that uploaded your pictures could not do this.</p>
 
-    <h2>What the server does see</h2>
-    <p>Honesty cuts both ways, so here is the whole picture: like any
+    <h2>What we do see</h2>
+    <p>Honesty cuts both ways, so here is the whole picture. Like any
        website, the server that hands you the app sees the ordinary request
-       for the app itself — the visit. It never sees your pictures, their
-       names, their sizes, or anything about them, because no request
-       carrying them is ever made. There are no analytics scripts and no
-       third-party requests of any kind; the security policy above forbids
-       those too.</p>
+       for the app itself — the visit. And the page sends privacy-respecting
+       usage analytics to <code>e.syedsarib.com</code>: which pages were
+       visited and where clicks landed, plus anonymous totals such as how
+       many images were compressed, how many megabytes were saved, which
+       formats were involved and how long it took. That is how we learn
+       whether Pocketsize is useful. It never sends your pictures, their
+       names, or what is in them: session recordings hide every word on
+       screen and block the parts that show your files outright. The
+       security policy above forbids every other address.</p>
 
     <h2>The code is open</h2>
     <p>Everything this page claims can be checked a fourth way: by reading

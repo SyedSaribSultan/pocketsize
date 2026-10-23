@@ -225,9 +225,13 @@ export function warmAvif() {
 
 /** Mark the start of a run. Adding files to a run already in flight extends it
  *  rather than restarting the clock. */
+let batchStartedAt = 0;
 export function beginBatch() {
+  if (!batchActive) batchStartedAt = performance.now();
   batchActive = true;
 }
+/** When the current (or just-finished) run started, for the run's duration. */
+export const batchStartedAtMs = () => batchStartedAt;
 
 /* Test seam. The browser harness asserts that the untouched original is on screen
  * BEFORE any encoder is asked for anything, and that ordering is only observable

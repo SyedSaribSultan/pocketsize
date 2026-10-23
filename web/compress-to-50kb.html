@@ -94,6 +94,11 @@
      the script always stamps an answer; there is no unstamped state. -->
 <script src="/js/theme.js"></script>
 
+<!-- Usage analytics: page visits and anonymous totals (how many pictures, how
+     many bytes saved) - never a file name, a path or a pixel. External because
+     the CSP bans inline script; does nothing off the production host. -->
+<script src="/js/analytics.js" async></script>
+
 <!-- The HeyOz token layer and its self-hosted faces, loaded before base.css,
      which aliases this app's six-name vocabulary onto them. heyoz-tokens.css
      is a vendored copy - see GUIDE.md; edit it upstream, never here. -->
@@ -131,7 +136,7 @@
       "name": "Is this really running on my computer?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Yes — every byte of the work happens in your browser. The “nothing is uploaded” link above shows you how to watch the network panel stay silent while it runs."
+        "text": "Yes — every byte of the work happens in your browser. The “nothing is uploaded” link above shows you how to watch the network panel and see your picture is never sent."
       }
     }
   ]
@@ -495,7 +500,7 @@
     <h2>Which format wins at 50 KB?</h2>
     <p>It depends on the picture, which is why Pocketsize tries several and measures instead of guessing. Photos usually land on JPEG, WebP or AVIF; flat graphics often win as PNG with fewer colors.</p>
     <h2>Is this really running on my computer?</h2>
-    <p>Yes — every byte of the work happens in your browser. The “nothing is uploaded” link above shows you how to watch the network panel stay silent while it runs.</p>
+    <p>Yes — every byte of the work happens in your browser. The “nothing is uploaded” link above shows you how to watch the network panel and see your picture is never sent.</p>
   </div>
 </section>
 
@@ -509,8 +514,8 @@
 <dialog id="help" aria-labelledby="help-title">
   <h3 id="help-title">Pocketsize</h3>
   <p>Every picture is saved several ways, measured against the original, and
-     the smallest one that still looks right is kept. Nothing ever leaves your
-     computer — after one visit, it even works offline.</p>
+     the smallest one that still looks right is kept. Your pictures never leave
+     your computer — after one visit, it even works offline.</p>
   <div id="help-keys">
     <div><kbd>Space</kbd><span>hold to flick between before and after — the fastest way to spot a difference</span></div>
     <div><kbd>D</kbd><span>difference heatmap</span></div>

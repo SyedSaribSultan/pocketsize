@@ -362,7 +362,10 @@ if you are looking for why a deployed build compresses pictures and not video,
 that is where to look rather than in the worker.
 
 Deploys from `web/` as the Vercel project root (`vercel.json` holds the strict
-CSP and cache headers — no third-party requests of any kind). The browser test
+CSP and cache headers — the only outside origin allowed is the usage counter,
+`https://e.syedsarib.com`, loaded by `web/js/analytics.js` on the production
+host only, which sends visits and anonymous totals and never a file, a name or
+a pixel). The browser test
 harness lives in `tests/web/`: the promise-suite E2E, the perf bench with its
 snapshot gates, the width-sweep and theme probes, the fixture generators, and a
 static server that replays production's headers. `tests/web/README.md` has the
@@ -426,7 +429,7 @@ The faces the tokens name are **self-hosted**, in `web/fonts/` and declared by
 `web/fonts.css`: Bricolage Grotesque (display, heading), Geist (body, label),
 Geist Mono. Upstream fetches these from Google Fonts by `<link>`; this app
 cannot, because a third-party request would break both the CSP
-(`default-src 'none'`) and the promise that nothing leaves the device. Six
+(`default-src 'none'`) and the promise that files never leave the device. Six
 variable `woff2` faces, latin and latin-ext, 191 KB total, each keeping the
 exact `unicode-range` Google ships so an out-of-subset glyph falls through the
 token stack instead of rendering tofu. The two above-the-fold faces are

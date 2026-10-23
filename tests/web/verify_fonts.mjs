@@ -164,10 +164,15 @@ try {
   });
   ok(heavy2.length === 0, `still nothing above 600 with the app populated${heavy2.length ? ": " + heavy2.join(", ") : ""}`);
 
-  // Privacy: everything must come from this origin.
+  /* Privacy: everything comes from this origin, except the usage counter -
+     page visits and anonymous totals, never a file - which is the one outside
+     origin the CSP allows, and which loads on the production host only. */
   const base = new URL(BASE).origin;
-  const foreign = [...origins].filter((o) => o !== base && o !== "null");
-  ok(foreign.length === 0, `no third-party requests${foreign.length ? ": " + foreign.join(", ") : ""}`);
+  const COUNTER = "https://e.syedsarib.com";
+  const foreign = [...origins].filter((o) => o !== base && o !== "null" && o !== COUNTER);
+  ok(foreign.length === 0, `no third-party requests beyond the usage counter${foreign.length ? ": " + foreign.join(", ") : ""}`);
+  const local = !process.env.E2E_URL;
+  ok(!local || !origins.has(COUNTER), "nothing at all leaves a local or CI run");
   ok(cspErrors.length === 0, `no console/CSP errors${cspErrors.length ? ": " + cspErrors[0] : ""}`);
 
   await pg.screenshot({ path: path.join(here, "fonts-live.png") });

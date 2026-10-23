@@ -25,9 +25,12 @@ browser, SSIMULACRA 2 included (ported to JavaScript and validated against the
 reference implementation). Your images never leave your device.
 
 That is not a promise you have to take on trust. The page is served under
-`Content-Security-Policy: default-src 'none'; connect-src 'self'`, so the
-browser itself will not let it send your picture anywhere, whatever the code
-says. Open the network tab and watch.
+`Content-Security-Policy: default-src 'none'; connect-src 'self' https://e.syedsarib.com`,
+so the browser itself will not let it send anything to any other address,
+whatever the code says. The one outside address is our usage counter: page
+visits and anonymous totals (how many images, how many MB saved, which
+formats, how long), sent by [`web/js/analytics.js`](web/js/analytics.js) —
+never a file, a file name or image data. Open the network tab and watch.
 
 [tests/BENCHMARK.md](tests/BENCHMARK.md) holds a reproducible head-to-head
 against single-format pipelines and fixed-quality defaults, every strategy

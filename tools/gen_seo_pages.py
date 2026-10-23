@@ -155,7 +155,7 @@ PAGES = [
             ("Is this really running on my computer?",
              "Yes — every byte of the work happens in your browser. The "
              "“nothing is uploaded” link above shows you how to "
-             "watch the network panel stay silent while it runs."),
+             "watch the network panel and see your picture is never sent."),
         ],
         {"size": "50 KB"},
     ),
@@ -336,7 +336,7 @@ PAGES = [
              "it."),
             ("Does this upload my PNGs anywhere?",
              "No — the AVIF encoder itself runs inside your browser. The "
-             "link above shows how to verify the network stays silent."),
+             "link above shows how to verify your PNGs are never sent."),
         ],
         {"format": "avif"},
     ),

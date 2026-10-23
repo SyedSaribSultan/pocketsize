@@ -6,6 +6,14 @@ This project follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Usage analytics, aggregates only (owner-approved 2026-10-23).**
+  `web/js/analytics.js` sends page visits and anonymous run totals to
+  PostHog through `https://e.syedsarib.com` - how many images, bytes in/out
+  and saved, which formats, which plan, how long. Never a file, a file name,
+  a path or a pixel: autocapture keeps no element text or attributes, replay
+  masks all text and inputs and blocks the queue, the comparison frame and
+  the name box. Production host only. The CSP allows that one origin and no
+  other; the proof page, README and llms.txt now say so plainly.
 - **`/.well-known/security.txt` and `/llms.txt`.** A place to report a
   security problem (RFC 9116, expires 2027-10-15 - renew it), and a plain
   summary of what the app is and which pages it has, for language-model

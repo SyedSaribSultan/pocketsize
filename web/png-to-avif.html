@@ -94,6 +94,11 @@
      the script always stamps an answer; there is no unstamped state. -->
 <script src="/js/theme.js"></script>
 
+<!-- Usage analytics: page visits and anonymous totals (how many pictures, how
+     many bytes saved) - never a file name, a path or a pixel. External because
+     the CSP bans inline script; does nothing off the production host. -->
+<script src="/js/analytics.js" async></script>
+
 <!-- The HeyOz token layer and its self-hosted faces, loaded before base.css,
      which aliases this app's six-name vocabulary onto them. heyoz-tokens.css
      is a vendored copy - see GUIDE.md; edit it upstream, never here. -->
@@ -131,7 +136,7 @@
       "name": "Does this upload my PNGs anywhere?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "No — the AVIF encoder itself runs inside your browser. The link above shows how to verify the network stays silent."
+        "text": "No — the AVIF encoder itself runs inside your browser. The link above shows how to verify your PNGs are never sent."
       }
     }
   ]
@@ -495,7 +500,7 @@
     <h2>Why is AVIF encoding slower than the others?</h2>
     <p>AVIF spends more computing to find more savings; that is the trade. Pocketsize runs it in parallel workers and shows the first good result in seconds while the search finishes behind it.</p>
     <h2>Does this upload my PNGs anywhere?</h2>
-    <p>No — the AVIF encoder itself runs inside your browser. The link above shows how to verify the network stays silent.</p>
+    <p>No — the AVIF encoder itself runs inside your browser. The link above shows how to verify your PNGs are never sent.</p>
   </div>
 </section>
 
@@ -509,8 +514,8 @@
 <dialog id="help" aria-labelledby="help-title">
   <h3 id="help-title">Pocketsize</h3>
   <p>Every picture is saved several ways, measured against the original, and
-     the smallest one that still looks right is kept. Nothing ever leaves your
-     computer — after one visit, it even works offline.</p>
+     the smallest one that still looks right is kept. Your pictures never leave
+     your computer — after one visit, it even works offline.</p>
   <div id="help-keys">
     <div><kbd>Space</kbd><span>hold to flick between before and after — the fastest way to spot a difference</span></div>
     <div><kbd>D</kbd><span>difference heatmap</span></div>
