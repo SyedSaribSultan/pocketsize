@@ -1,4 +1,4 @@
-// Sarib design system: behaviours v2.1.0. ESM, no dependencies.
+// Sarib design system: behaviours v2.3.0. ESM, no dependencies.
 // Opt-in through data attributes; one set of delegated listeners on document, so
 // elements added later work too. Framework apps may skip this file and keep their
 // own state, as long as the DOM, ARIA and classes match demo/index.html.
@@ -22,6 +22,11 @@
 //   toast(message, {tone, action, onAction, duration})
 //
 // Exit motion waits for the fast duration token; reduced motion makes it 0.
+//
+// v2.3: overlay keys are scoped. Esc, the dialog "cancel" event and backdrop clicks only act on
+// drawers and dialogs that this file opened (data-s-open / openOverlay). An app that runs its own
+// <dialog> or drawer (React/Preact state) can load this file for tips, menus and toasts without it
+// closing that app's overlays.
 
 const doc = document;
 const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
@@ -40,6 +45,7 @@ const unlock = () => { if (locks > 0 && --locks === 0) doc.documentElement.style
 
 /* ---------- overlays: drawers and dialogs ---------- */
 const returnFocus = new WeakMap();
+const managed = new Set(); // overlays opened through openOverlay, newest last
 const isSidebar = (el) => el.classList.contains("s-sidebar");
 const isOpen = (el) =>
   el.tagName === "DIALOG" ? el.open : isSidebar(el) ? el.hasAttribute("data-open") : !el.hasAttribute("inert");
@@ -48,6 +54,8 @@ const backdropFor = (el) => doc.querySelector(`[data-s-backdrop="${el.id}"]`);
 export function openOverlay(el, trigger = doc.activeElement) {
   if (!el || isOpen(el)) return;
   returnFocus.set(el, trigger);
+  managed.delete(el);
+  managed.add(el);
   if (el.tagName === "DIALOG") {
     el.removeAttribute("data-closing");
     el.showModal();
@@ -63,6 +71,7 @@ export function openOverlay(el, trigger = doc.activeElement) {
 
 export function closeOverlay(el) {
   if (!el || !isOpen(el)) return;
+  managed.delete(el);
   const done = () => {
     unlock();
     const t = returnFocus.get(el);
@@ -378,7 +387,7 @@ export function init() {
     }
     const bd = t.closest("[data-s-backdrop]");
     if (bd) { closeOverlay(byId(bd.getAttribute("data-s-backdrop"))); return; }
-    if (t.tagName === "DIALOG" && t.matches("dialog[open]")) { // click on ::backdrop
+    if (t.tagName === "DIALOG" && t.matches("dialog[open]") && managed.has(t)) { // click on ::backdrop
       const r = t.getBoundingClientRect();
       if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) closeOverlay(t);
       return;
@@ -426,10 +435,8 @@ export function init() {
     if (e.key === "Escape") {
       const tip = doc.querySelector('[data-s-tooltip] > [aria-expanded="true"]');
       if (tip) { tip.setAttribute("aria-expanded", "false"); return; }
-      const dlg = [...doc.querySelectorAll("dialog[open]")].pop();
-      if (dlg) { e.preventDefault(); return closeOverlay(dlg); }
-      const drawer = [...doc.querySelectorAll(".s-drawer:not([inert]), .s-sidebar[data-open]")].pop();
-      if (drawer) return closeOverlay(drawer);
+      const top = [...managed].filter((el) => el.isConnected && isOpen(el)).pop();
+      if (top) { e.preventDefault(); return closeOverlay(top); }
     }
     const tab = t?.closest('[data-s-tabs] [role="tab"]');
     if (tab) {
@@ -475,7 +482,7 @@ export function init() {
   }).observe(doc.documentElement, { subtree: true, childList: true, attributeFilter: ["data-s-tip"] });
 
   // Native <dialog> Esc goes through "cancel": route it through the exit animation.
-  doc.addEventListener("cancel", (e) => { if (e.target.tagName === "DIALOG") { e.preventDefault(); closeOverlay(e.target); } }, true);
+  doc.addEventListener("cancel", (e) => { if (e.target.tagName === "DIALOG" && managed.has(e.target)) { e.preventDefault(); closeOverlay(e.target); } }, true);
   doc.addEventListener("input", (e) => { if (e.target.matches?.("textarea[data-s-autogrow]")) grow(e.target); });
 
   const setup = () => {
