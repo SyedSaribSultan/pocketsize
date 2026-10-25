@@ -4,7 +4,7 @@
  * real lengths, that controls shared a height across the design system, that the
  * inline plan sentence's selects were sized to their own words, and that the theme
  * button cycled dark/light/auto. All four of those subjects are gone: the browser
- * app no longer reads the --oz- and --app- token layer (that now serves only the
+ * app no longer reads the old --app- token layer (that served only the
  * desktop app, and tests/web/verify_tokens.mjs checks it there), the plan is
  * labelled fields rather than a measured sentence, and there is no theme button -
  * the page follows the reader's own setting.
@@ -152,10 +152,10 @@ try {
      `the page ground changes (${seen.light.body.bg} -> ${seen.dark.body.bg})`);
   ok(seen.light.body.fg !== seen.dark.body.fg,
      `and so does the ink (${seen.light.body.fg} -> ${seen.dark.body.fg})`);
-  /* The HeyOz brand fill is the same value in both modes on purpose - its
-     contrast is gated (APCA) in the token layer, and the system's own README
-     says not to "fix" it. Everything that is not the brand must move. */
-  const BRAND_FILL = "rgb(255, 61, 1)";
+  /* The Sarib brand fill (#c31800) is the same value in both modes on
+     purpose - it carries white text in either, and the system defines it
+     once. Everything that is not the brand must move. */
+  const BRAND_FILL = "rgb(195, 24, 0)";
   const same = seen.light.surfaces.filter(
     (c) => seen.dark.surfaces.includes(c) && c !== BRAND_FILL);
   ok(same.length === 0,

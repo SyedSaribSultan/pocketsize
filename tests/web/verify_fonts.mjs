@@ -90,7 +90,10 @@ try {
   ok(isUI(paints.bodyFamily), `body resolves to ${UI} first (${paints.bodyFamily})`);
   ok(paints.numFamily.includes(MONO), `figures resolve to ${MONO} first`);
   ok(isUI(paints.brandFamily), `the wordmark resolves to ${UI} first`);
-  ok(isUI(paints.aboutFamily), "and so does the about strip's lead heading");
+  /* Headlines are the system's second face: the about strip's lead heading is
+     set in Google Sans Code, as every page headline on syedsarib.com is. */
+  ok(paints.aboutFamily.includes(MONO),
+     `the about strip's lead heading resolves to ${MONO}, the headline face (${paints.aboutFamily})`);
   ok(isUI(paints.labelFamily), "and every field label");
   ok(isUI(paints.buttonFamily),
      `and the buttons, which do not inherit it (${paints.buttonFamily})`);

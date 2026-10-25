@@ -57,18 +57,19 @@
   contain-intrinsic-size: auto 70px;
   transition:
     background-color var(--dur-fx) var(--ease-fx),
-    border-color var(--dur-fx) var(--ease-fx),
-    box-shadow var(--dur-fx) var(--ease-fx);
+    border-color var(--dur-fx) var(--ease-fx);
 }
-.row:hover { background: var(--c-raised); box-shadow: var(--elev-1); }
+/* The system's card hover: a fill change, no shadow, no lift. */
+.row:hover { background: var(--c-fill); }
 
-/* The one on the stage. Marked with the system's selected fill and a left
-   edge, not colour alone, and aria-selected carries the same fact to anything
-   not looking at pixels. */
-.row[aria-selected="true"] {
-  background: var(--c-selected);
-  border-color: var(--c-border-selected);
-  box-shadow: inset 2px 0 0 var(--c-accent);
+/* The one on the stage: lifted onto the raised surface inside a stronger
+   hairline - a shape change, not colour alone - and aria-selected carries the
+   same fact to anything not looking at pixels. Ink, not red: the red on this
+   screen belongs to the one primary action. */
+.row[aria-selected="true"],
+.row[aria-selected="true"]:hover {
+  background: var(--c-raised);
+  border-color: var(--c-line-strong);
 }
 
 .row > .thumb {
@@ -77,14 +78,13 @@
   height: 40px;
   border-radius: var(--radius-sm);
   object-fit: cover;
-  background: var(--c-sunk);
-  box-shadow: var(--elev-1);
+  background: var(--c-fill);
 }
 /* Not decoded yet: a quiet shimmer says "coming", where a blank square says
    "broken". The global reduced-motion rule in base.css stills it. */
 .row > .thumb:not([src]) {
   background-image: linear-gradient(100deg,
-    var(--c-sunk) 40%, var(--c-raised) 50%, var(--c-sunk) 60%);
+    var(--c-fill) 40%, var(--c-raised) 50%, var(--c-fill) 60%);
   background-size: 200% 100%;
   animation: thumb-wait 1.4s linear infinite;
 }
@@ -151,8 +151,8 @@
   height: 28px;
   padding: 0;
   border: 1px solid var(--c-line);
-  border-radius: var(--radius-sm);
-  background: var(--c-raised);
+  border-radius: var(--radius-pill);
+  background: var(--c-field);
   color: var(--c-ink-2);
   cursor: pointer;
   transition:
@@ -190,7 +190,7 @@
   height: 2px;
   margin-top: var(--s-1);
   background: var(--c-line);
-  border-radius: 2px;
+  border-radius: var(--radius-pill);
   overflow: hidden;
 }
 /* A transform, not a width - see the note on #batch in layout.css. */
@@ -200,7 +200,7 @@
   width: 100%;
   transform: scaleX(0);
   transform-origin: 0 50%;
-  background: var(--c-accent);
+  background: var(--c-ink);
   transition: transform 0.2s linear;
 }
 
@@ -229,7 +229,7 @@
 
 /* The whole window accepts a drop. Saying so only while something is being
    dragged keeps the affordance out of the way the rest of the time. */
-body[data-drag="1"] #side { outline: 2px dashed var(--c-accent); outline-offset: -4px; }
+body[data-drag="1"] #side { outline: 2px dashed var(--c-line-strong); outline-offset: -4px; }
 
 #queue-foot {
   padding: var(--s-2) var(--s-4);

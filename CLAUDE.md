@@ -30,7 +30,8 @@ All UI in both interfaces is built strictly from the design system — the
 vanilla-stack equivalent of "only use `@/components/ui`":
 
 1. **One place for values.** Raw colours (`#hex`, `rgb()`, `hsl()`) exist in
-   exactly two files: `web/heyoz-tokens.css` (the palette) and
+   exactly two files: `web/sarib-tokens.css` (the Sarib design system's
+   palette, generated) and
    `web/css/base.css` (the named vocabulary, including the deliberate
    over-the-photograph constants `--c-checker-*` / `--c-over-*`). Every other
    sheet, and the desktop `<style>` block, consumes names only.
@@ -59,7 +60,10 @@ vanilla-stack equivalent of "only use `@/components/ui`":
   - `tools/gen_seo_pages.py` — `web/index.html` → use-case pages + `web/sitemap.xml`
   - `tools/gen_fonts.py` — `tools/fonts.json` → `web/fonts.css`, content-hashed
     `web/fonts/*.woff2`, font preloads, `web/sw.js` precache
-  - `tools/gen_tokens_subset.py` — `vendor/heyoz-tokens.css` → `web/heyoz-tokens.css`
+  - `tools/gen_tokens_subset.py` — `vendor/sarib-tokens.css` → `web/sarib-tokens.css`
+- The design system is the Sarib system (syedsarib.com; source
+  `sarib-design/tokens.css`, vendored verbatim). HeyOz tokens were retired
+  2026-10-25 and must not come back.
 - Any change that affects output needs a measurement at **matched perceptual
   quality** (see CONTRIBUTING.md). Never validate a metric change with that
   same metric.

@@ -5,6 +5,24 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- **Restyled in the Sarib design system (syedsarib.com); HeyOz tokens
+  retired.** `vendor/sarib-tokens.css` is a verbatim copy of
+  `sarib-design/tokens.css`; `tools/gen_tokens_subset.py` now prunes it to
+  `web/sarib-tokens.css` (48 tokens, the kit's drop-in base styles removed).
+  `web/heyoz-tokens.css` and `vendor/heyoz-tokens.css` are gone. Faces are
+  now Google Sans Flex (interface) and Google Sans Code (figures and
+  headlines), self-hosted. Warm neutrals, hairlines and no resting shadows,
+  16px/20px radii, the brand red on the one primary action, sentence-case
+  Code-face section labels, 1.5px icon strokes. The sidebar's floor rises to
+  440px because the new face is wider. Theme behaviour, analytics, CSP and
+  copy are unchanged; the service worker cache is bumped.
+- **A real 404 page** (`web/404.html`) in the same system, replacing the
+  host's default.
+- `tests/test_design_system.py` asserts the new system
+  (`TheAppIsDrawnInTheSaribSystem`); `verify_tokens.mjs`, `verify_fonts.mjs`
+  and `probe_theme.mjs` read the new tokens and faces.
+
 ### Added
 - **Usage analytics, aggregates only (owner-approved 2026-10-23).**
   `web/js/analytics.js` sends page visits and anonymous run totals to

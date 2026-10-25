@@ -100,15 +100,16 @@
 #divider > .tag {
   position: absolute;
   top: var(--s-3);
-  padding: 3px var(--s-2);
-  border-radius: 999px;
+  padding: 2px var(--s-3);
+  border-radius: var(--radius-pill);
   background: var(--c-over-glass);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   color: var(--c-over-ink);
-  font-size: calc(15px * var(--type-scale));
-  font-weight: 500;
-  letter-spacing: 0.01em;
+  font-family: var(--font-num);
+  font-size: 14px;
+  font-weight: var(--w-regular);
+  letter-spacing: 0;
   white-space: nowrap;
 }
 #divider > .tag.l { right: var(--s-2); }
@@ -123,9 +124,9 @@
   top: 50%;
   left: 50%;
   translate: -50% -50%;
-  width: 30px;
-  height: 30px;
-  border-radius: 999px;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-pill);
   background:
     var(--icon-grip) center / 16px no-repeat,
     var(--c-over-grip);
@@ -191,8 +192,9 @@
   border: 1px solid var(--c-line);
   border-radius: var(--radius-lg);
   /* Floating glass over the photograph: mostly the page ground, with the
-     picture faintly alive behind it. */
-  background: color-mix(in srgb, var(--c-bg) 86%, transparent);
+     picture faintly alive behind it. It floats, so it is one of the few
+     things the system lets cast a shadow. */
+  background: color-mix(in srgb, var(--c-bg) 88%, transparent);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   box-shadow: var(--elev-2);
@@ -254,9 +256,10 @@
   gap: var(--s-4);
   padding: var(--s-5);
   text-align: center;
-  color: var(--c-ink-3);
+  color: var(--c-ink-2);
 }
 #stage-hero > * { max-width: min(52ch, 100%); }
+#stage-hero > p { font-size: calc(18px * var(--type-scale)); }
 
 /* Which image is showing, when the caliper is not on screen to say it. */
 #mode-badge {
@@ -264,11 +267,12 @@
   top: 72px;
   left: 50%;
   transform: translateX(-50%);
-  padding: 3px var(--s-3);
-  border-radius: 999px;
+  padding: 2px var(--s-3);
+  border-radius: var(--radius-pill);
   background: var(--c-over-glass);
   color: var(--c-over-ink);
-  font-size: calc(15px * var(--type-scale));
+  font-family: var(--font-num);
+  font-size: 14px;
   white-space: nowrap;
   z-index: 2;
   pointer-events: none;
@@ -288,7 +292,7 @@
   align-items: center;
   gap: var(--s-2);
   padding: var(--s-2) var(--s-4);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--c-over-glass-strong);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);

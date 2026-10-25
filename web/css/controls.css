@@ -11,98 +11,84 @@
  * this file tries to repaint a control it does not fully own.
  */
 
+/* The system's button: a soft squircle, regular weight, no border, no
+   shadow, no lift - state is a fill change and nothing else. The default is
+   the system's "secondary" (the muted fill); .primary is the brand red, which
+   is why a region gets at most one; .quiet is the ghost. */
 .btn {
   font: inherit;
-  font-weight: 500;
+  font-weight: var(--w-regular);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--s-2);
-  padding: var(--s-2) var(--s-3);
-  border: 1px solid var(--c-line);
+  padding: var(--s-2) var(--s-4);
+  border: 1px solid transparent;
   border-radius: var(--radius);
-  background: var(--c-raised);
+  background: var(--c-fill);
   color: var(--c-ink);
-  /* A hard plate, not a soft shadow: zero blur, one flat colour, so the edge
-     reads as the side of a physical key rather than a glow under a card. */
-  box-shadow: 0 3px 0 -1px var(--c-line-hover);
   cursor: pointer;
   white-space: nowrap;
+  text-decoration: none;
   transition:
     background-color var(--dur-fx) var(--ease-fx),
     border-color var(--dur-fx) var(--ease-fx),
-    box-shadow var(--dur-fx) var(--ease-fx),
-    transform var(--dur-move) var(--ease-move);
+    color var(--dur-fx) var(--ease-fx);
 }
-.btn:hover:not(:disabled) {
-  background: var(--c-raised-hover);
-  border-color: var(--c-line-hover);
-  box-shadow: 0 4px 0 -1px var(--c-line-hover);
-  transform: translateY(calc(-1px * var(--motion-scale)));
-}
-/* The press is the state: the key travels down and its edge shortens by the
-   same amount, so the top face lands where the plate was. Both values move
-   through the spatial scale, so a reduced-motion preference collapses the
-   travel without flattening the button. */
-.btn:active:not(:disabled) {
-  background: var(--c-raised-active);
-  box-shadow: 0 1px 0 -1px var(--c-line-hover);
-  transform: translateY(calc(2px * var(--motion-scale)));
-}
-.btn:disabled { opacity: 0.45; cursor: default; box-shadow: none; }
+.btn:hover:not(:disabled) { background: var(--c-fill-hover); }
+.btn:active:not(:disabled) { background: var(--c-fill-active); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .btn > svg { flex: none; width: 16px; height: 16px; }
 
+/* The brand fill carries white text in both themes; hover and press step
+   down the brand ramp. */
 .btn.primary {
-  background: var(--c-chrome-face);
-  border-color: var(--c-chrome-edge);
-  color: var(--c-chrome-ink);
-  box-shadow: 0 3px 0 -1px var(--c-chrome-shadow);
-  font-weight: 600;
+  background: var(--c-accent);
+  color: var(--c-accent-ink);
+  font-weight: var(--w-medium);
 }
-/* The face keeps its colour through hover and press - what changes is the
-   edge and the travel, which is what makes it feel like a key rather than a
-   rectangle that lights up. */
-.btn.primary:hover:not(:disabled) {
-  background: var(--c-chrome-face);
-  border-color: var(--c-chrome-edge);
-  box-shadow: 0 4px 0 -1px var(--c-chrome-shadow);
-}
-.btn.primary:active:not(:disabled) {
-  background: var(--c-chrome-face);
-  border-color: var(--c-chrome-edge);
-  box-shadow: 0 1px 0 -1px var(--c-chrome-shadow);
-}
+.btn.primary:hover:not(:disabled) { background: var(--c-accent-hover); }
+.btn.primary:active:not(:disabled) { background: var(--c-accent-active); }
 
-.btn.sm { padding: var(--s-1) var(--s-2); font-size: calc(16px * var(--type-scale)); }
+/* The system's sm button: a 14px squircle radius and a tighter box. The label
+   stays at 15px - the legibility floor for control text here is 15. */
+.btn.sm {
+  padding: var(--s-1) var(--s-3);
+  font-size: calc(15px * var(--type-scale));
+  border-radius: var(--radius-btn-sm);
+}
 .btn.sm > svg { width: 14px; height: 14px; }
 
-/* No border, no fill - for actions that sit inside something already framed. */
+/* The ghost: no fill until the pointer arrives - for actions that sit inside
+   something already framed. */
 .btn.quiet {
   background: transparent;
-  border-color: transparent;
   color: var(--c-ink-2);
-  box-shadow: none;
 }
-.btn.quiet:hover:not(:disabled) { background: var(--c-sunk); color: var(--c-ink); }
+.btn.quiet:hover:not(:disabled) { background: var(--c-ghost-hover); color: var(--c-ink); }
+.btn.quiet:active:not(:disabled) { background: var(--c-ghost-active); color: var(--c-ink); }
 
 /* ------------------------------ form fields ------------------------------- */
 
+/* Fields follow the system's input: a hairline border on the input fill,
+   rounded like the buttons beside them, the border stepping up on hover and
+   focus. No shadow. */
 select, input[type="text"], input[type="number"] {
   font: inherit;
-  padding: var(--s-1) var(--s-2);
+  padding: var(--s-2);
   border: 1px solid var(--c-line);
   border-radius: var(--radius);
-  background: var(--c-raised);
+  background: var(--c-field);
   color: var(--c-ink);
   max-width: 100%;
-  box-shadow: var(--elev-1);
-  transition:
-    border-color var(--dur-fx) var(--ease-fx),
-    box-shadow var(--dur-fx) var(--ease-fx);
+  transition: border-color var(--dur-fx) var(--ease-fx);
 }
 select:hover, input[type="text"]:hover, input[type="number"]:hover {
   border-color: var(--c-line-hover);
+}
+select:focus, input[type="text"]:focus, input[type="number"]:focus {
+  border-color: var(--c-line-strong);
 }
 input[type="number"] { width: 7ch; }
 
@@ -116,7 +102,7 @@ select {
   background-image: var(--icon-chevron);
   background-repeat: no-repeat;
   background-position: right var(--s-2) center;
-  background-size: 14px;
+  background-size: 16px;
 }
 
 /* ------------------------------- the picker -------------------------------
@@ -125,8 +111,8 @@ select {
    A native <select> hands its open list to the operating system, and no page
    can style that - so the menu was the one surface in this app wearing someone
    else's clothes. These classes dress the button and the list in the same
-   vocabulary as everything else: the hard plate of .btn, the app's own line and
-   surface colours, the accent for the current choice.
+   vocabulary as everything else: the system's field, line and surface colours,
+   and an ink mark for the current choice.
 
    The <select> itself has not gone anywhere. js/picker.js keeps it as the model
    and hides it with .picker-native below; if that module never runs, the rule
@@ -167,10 +153,9 @@ select {
 
 .picker { position: relative; display: flex; min-width: 0; flex: 1; }
 
-/* The closed control. Deliberately the same plate as .btn - same border, same
-   flat shadow, same press travel - because it IS a button now, and a dropdown
-   that looked like a text field while behaving like a button would be lying
-   about which one it is. */
+/* The closed control. Dressed as the plan's other fields - same hairline,
+   same radius, same fill - so the column reads as one form; the chevron is
+   what says it opens. */
 .picker-btn {
   font: inherit;
   display: flex;
@@ -179,23 +164,20 @@ select {
   width: 100%;
   min-width: 0;
   text-align: left;
-  padding: var(--s-1) calc(var(--s-2) + 20px) var(--s-1) var(--s-2);
+  padding: var(--s-2) calc(var(--s-2) + 20px) var(--s-2) var(--s-3);
   border: 1px solid var(--c-line);
   border-radius: var(--radius);
-  background: var(--c-raised) var(--icon-chevron) no-repeat
-              right var(--s-2) center / 14px;
+  background: var(--c-field) var(--icon-chevron) no-repeat
+              right var(--s-2) center / 16px;
   color: var(--c-ink);
-  box-shadow: var(--elev-1);
   cursor: pointer;
-  transition:
-    border-color var(--dur-fx) var(--ease-fx),
-    box-shadow var(--dur-fx) var(--ease-fx);
+  transition: border-color var(--dur-fx) var(--ease-fx);
 }
 .picker-btn:hover:not(:disabled) { border-color: var(--c-line-hover); }
 .picker-btn:disabled { cursor: default; opacity: 0.55; }
 /* Open is a state the closed control shows, so the two read as one object
    rather than as a button with an unrelated card under it. */
-.picker[data-open="1"] .picker-btn { border-color: var(--c-accent); }
+.picker[data-open="1"] .picker-btn { border-color: var(--c-line-strong); }
 
 /* The value can be longer than the column; it ellipsises rather than widening
    the sidebar. The full words ride the button's title, and the list itself
@@ -233,10 +215,10 @@ select {
   max-height: min(var(--picker-max, 320px), 320px);
   overflow-y: auto;
   padding: var(--s-1);
-  border: 1px solid var(--c-line-hover);
+  border: 1px solid var(--c-line);
   border-radius: var(--radius);
-  background: var(--c-bg);
-  box-shadow: var(--elev-3);
+  background: var(--c-raised);
+  box-shadow: var(--elev-2);
   /* Overscroll containment: reaching the end of this list must not start
      scrolling the sidebar behind it. */
   overscroll-behavior: contain;
@@ -256,12 +238,12 @@ select {
 }
 /* One highlight, driven by the keyboard and the pointer alike, so arrowing and
    hovering cannot disagree about what is about to be chosen. */
-.picker-opt.is-active { background: var(--c-selected); }
+.picker-opt.is-active { background: var(--c-fill); }
 /* The current choice, which is a different fact from the active one: a mark
    rather than a fill, so both can show at once without a colour fight. */
 .picker-opt[aria-selected="true"] {
-  font-weight: 600;
-  box-shadow: inset 2px 0 0 var(--c-accent);
+  font-weight: var(--w-medium);
+  box-shadow: inset 2px 0 0 var(--c-ink);
 }
 .picker-opt[aria-disabled="true"] {
   color: var(--c-ink-3);
@@ -281,7 +263,7 @@ select {
   padding: var(--s-1) 0;
 }
 .field > label {
-  flex: 0 0 112px;
+  flex: 0 0 128px;
   color: var(--c-ink-2);
 }
 /* min-width: 0 is load-bearing, not defensive. A <select>'s intrinsic minimum is
@@ -371,7 +353,7 @@ select {
      width below applies, which is the same generous fixed box as before. The
      ceiling is what stops a long value pushing the sidebar's regions apart. */
   field-sizing: content;
-  width: 11ch;
+  width: 9ch;
   min-width: 9ch;
   max-width: 100%;
 }
@@ -486,20 +468,22 @@ select {
    than a select, because the alternatives are visible without opening
    anything. Pressed state is carried by aria-pressed, so the styling and the
    accessibility name cannot drift apart. */
+/* The system's segmented control: a pill track in the muted fill, and the
+   chosen segment lifted onto the raised surface with the small shadow - the
+   one resting shadow the system allows, because the segment floats. */
 .segmented {
   display: inline-flex;
-  border: 1px solid var(--c-line);
-  border-radius: var(--radius);
-  overflow: hidden;
-  background: var(--c-raised);
-  box-shadow: var(--elev-1);
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--c-fill);
 }
 .segmented > button {
   font: inherit;
-  font-weight: 500;
-  padding: var(--s-1) var(--s-3);
+  font-size: calc(15px * var(--type-scale));
+  padding: var(--s-1) var(--s-4);
   border: 0;
-  border-right: 1px solid var(--c-line);
+  border-radius: var(--radius-pill);
   background: transparent;
   color: var(--c-ink-2);
   cursor: pointer;
@@ -507,14 +491,11 @@ select {
     background-color var(--dur-fx) var(--ease-fx),
     color var(--dur-fx) var(--ease-fx);
 }
-.segmented > button:hover:not([aria-pressed="true"]) {
-  background: var(--c-sunk);
-  color: var(--c-ink);
-}
-.segmented > button:last-child { border-right: 0; }
+.segmented > button:hover:not([aria-pressed="true"]) { color: var(--c-ink); }
 .segmented > button[aria-pressed="true"] {
-  background: var(--c-accent);
-  color: var(--c-accent-ink);
+  background: var(--c-raised);
+  color: var(--c-ink);
+  box-shadow: var(--elev-1);
 }
 /* Out of service but still speaking: a mode that does not apply is dimmed and
    keeps focus, so its reason stays reachable - the title on hover, the toast
@@ -543,10 +524,10 @@ select {
   max-width: min(90vw, 520px);
   padding: var(--s-3) var(--s-4);
   border: 1px solid var(--c-line);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius);
   background: var(--c-raised);
   color: var(--c-ink);
-  box-shadow: var(--elev-3);
+  box-shadow: var(--elev-2);
   transition: transform var(--dur-move) var(--ease-move);
   z-index: 20;
 }
@@ -566,11 +547,11 @@ select {
   top: 50%;
   transform: translate(-50%, -50%);
   padding: var(--s-3) var(--s-6);
-  border-radius: 999px;
-  background: var(--c-accent);
-  color: var(--c-accent-ink);
-  font-size: calc(20px * var(--type-scale));
-  font-weight: 600;
+  border-radius: var(--radius-pill);
+  background: var(--c-inverse);
+  color: var(--c-inverse-ink);
+  font-size: calc(18px * var(--type-scale));
+  font-weight: var(--w-medium);
   box-shadow: var(--elev-3);
   pointer-events: none;
   z-index: 30;
@@ -599,8 +580,8 @@ select {
   width: 6px;
   height: 6px;
   margin-left: 6px;
-  border-radius: 999px;
-  background: var(--c-accent);
+  border-radius: var(--radius-pill);
+  background: var(--c-ink-2);
   vertical-align: middle;
 }
 
@@ -615,9 +596,15 @@ dialog {
   color: var(--c-ink);
   box-shadow: var(--elev-3);
 }
-dialog::backdrop {
-  background: var(--overlay-dim);
-  backdrop-filter: blur(var(--overlay-blur));
+/* The system's backdrop: ink at 30%, no blur. */
+dialog::backdrop { background: var(--overlay-dim); }
+/* A dialog's title is a title, not a section label. */
+dialog h3 {
+  font-family: var(--font-ui);
+  font-size: calc(20px * var(--type-scale));
+  line-height: 1.4;
+  font-weight: var(--w-medium);
+  color: var(--c-ink);
 }
 dialog p { padding: var(--s-3) 0 var(--s-4); color: var(--c-ink-2); }
 dialog .row { display: flex; gap: var(--s-2); justify-content: flex-end; }

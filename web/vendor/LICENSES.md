@@ -54,12 +54,12 @@ family names.
 
 | Files | Family | Licence |
 | --- | --- | --- |
-| `instrument-serif-*.woff2` | Instrument Serif | SIL OFL 1.1 |
-| `geist-mono-*.woff2` | Geist Mono | SIL OFL 1.1 |
+| `google-sans-flex-*.woff2` | Google Sans Flex | SIL OFL 1.1 |
+| `google-sans-code-*.woff2` | Google Sans Code | SIL OFL 1.1 |
 
-Copyright 2022 The Instrument Serif Project Authors (https://github.com/Instrument/instrument-serif)
+Copyright 2015 The Google Sans Flex Authors (https://github.com/googlefonts/googlesans-flex)
 
-Copyright 2024 The Geist Project Authors (https://github.com/vercel/geist-font.git)
+Copyright 2025 The Google Sans Code Project Authors (github.com/googlefonts/googlesans-code)
 
 ```
 This Font Software is licensed under the SIL Open Font License, Version 1.1.

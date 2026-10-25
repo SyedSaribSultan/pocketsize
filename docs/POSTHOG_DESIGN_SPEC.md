@@ -1,5 +1,10 @@
 # PostHog-style reskin — extracted spec and token mapping (2026-08-14)
 
+> **SUPERSEDED 2026-10-25.** The app no longer uses the HeyOz token layer this
+> spec re-valued. It is drawn in the Sarib design system (syedsarib.com) —
+> see GUIDE.md "Design system" and `vendor/sarib-tokens.css`. Kept as a
+> historical record only; nothing below describes the current interface.
+
 > **Status: APPLIED 2026-08-15, except D5.** Decisions D1–D4 and D6 shipped:
 > the warm eggshell light surfaces and cool blue-charcoal dark ones, the
 > orange→yellow accent swap, the 3D button chrome on primary and secondary

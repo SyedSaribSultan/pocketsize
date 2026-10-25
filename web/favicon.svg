@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <!-- Pocketsize mark: a picture tucked into a pocket.
-       HeyOz palette: color/background, border/secondary, fill/brand, content/secondary -->
+       The original mark, kept as drawn: ink ground, hairline, a muted picture, a red pocket. -->
   <rect x="2" y="2" width="60" height="60" rx="14" fill="#070605"/>
   <rect x="3" y="3" width="58" height="58" rx="13" fill="none" stroke="#5F5D5C" stroke-width="2"/>
   <!-- the picture, peeking out: a sun and a mountain -->

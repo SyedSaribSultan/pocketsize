@@ -94,7 +94,7 @@ Several things are generated from a source of truth and committed, because
 python tools/gen_ss2_module.py      --check   # web/ss2.module.js
 python tools/gen_seo_pages.py       --check   # the use-case pages + sitemap
 python tools/gen_fonts.py           --check   # web/fonts.css + the woff2 files
-python tools/gen_tokens_subset.py   --check   # web/heyoz-tokens.css
+python tools/gen_tokens_subset.py   --check   # web/sarib-tokens.css
 ```
 
 Drop `--check` to rewrite them. **Never edit the outputs.** Change the source
@@ -112,7 +112,7 @@ It is now the reference itself, and is edited directly.
 | `web/ss2.module.js` | `web/ss2.js` | `tools/gen_ss2_module.py` |
 | `web/<slug>.html` + `web/sitemap.xml` | `web/index.html` | `tools/gen_seo_pages.py` |
 | `web/fonts.css`, `web/fonts/*.<hash>.woff2`, font preloads, `web/sw.js` precache | `tools/fonts.json` | `tools/gen_fonts.py` |
-| `web/heyoz-tokens.css` | `vendor/heyoz-tokens.css` | `tools/gen_tokens_subset.py` |
+| `web/sarib-tokens.css` | `vendor/sarib-tokens.css` (verbatim copy of `sarib-design/tokens.css`) | `tools/gen_tokens_subset.py` |
 
 `web/ss2.module.js` is there for a reason worth knowing before you are tempted
 to "simplify" it away. The image worker is a classic worker and pulls the metric
@@ -131,14 +131,14 @@ reference within an hour of being created.
 
 ## One design system, and one set of motion values
 
-Both interfaces render from `web/heyoz-tokens.css`. The desktop app gets a
-committed copy of it; nothing in either app declares a colour, a corner or a
-duration of its own.
+The app renders from the **Sarib design system** (syedsarib.com): the pruned
+token sheet `web/sarib-tokens.css`, aliased by `web/css/base.css`. Nothing
+outside base.css declares a colour of its own, and base.css reads only `--s-*`
+tokens.
 
 ```bash
-node tests/web/verify_tokens.mjs     # static: both app layers, colour + motion
-node tests/web/verify_desktop.mjs    # runtime: the desktop app in real Chrome
-node tests/web/shoot_both.mjs        # screenshots, both apps, both themes
+node tests/web/verify_tokens.mjs     # static: weight ceiling + faces on disk
+python -m unittest discover -s tests # includes the design-system rules
 ```
 
 Four more run the parts of the product that only exist in a browser:
@@ -164,15 +164,13 @@ easing curve, `transition: all`, and — the one that costs users something real
 every frame; `transform` and `opacity` are composited and cannot. Three
 progress bars in this app animated `width` before that rule existed.
 
-Use the values the system already ships: `--oz-duration-*`, `--oz-ease-*`, and
-the `--oz-spring-{effects,spatial}-{fast,default,slow}` pairs. Do not add a
-second motion vocabulary — `--oz-ease-exit` already exists, and redefining it
-would silently change every exit animation in the product.
+Use the values the system already ships, through base.css's `--dur-*` /
+`--ease-*` aliases onto `--s-motion-duration-*` and `--s-motion-easing-*`. Do
+not add a second motion vocabulary.
 
-`prefers-reduced-motion` is handled once, in the token layer, for both
-interfaces. It collapses spatial travel and takes the overshoot off the springs
-while leaving fades alone, because a fade is often the thing carrying the
-meaning. Do not re-handle it per component or per app.
+`prefers-reduced-motion` is handled in the token layer (every
+`--s-motion-duration-*` collapses to 0) and by one global rule in base.css. Do
+not re-handle it per component.
 
 ## Ground rules
 

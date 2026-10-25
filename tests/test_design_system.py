@@ -55,10 +55,10 @@ def _web_css(name: str) -> str:
 
 
 class TheBrowserAppHasOnePlaceForValues(unittest.TestCase):
-    """base.css aliases the app's six-name vocabulary onto the HeyOz token
-    layer (--c-bg is --oz-color-background, and so on), and every other sheet
-    consumes only those aliases. One indirection, enforced here: base.css
-    defines; the rest consume.
+    """base.css aliases the app's vocabulary onto the Sarib token layer (--c-bg
+    is --s-color-background, and so on), and every other sheet consumes only
+    those aliases. One indirection, enforced here: base.css defines; the rest
+    consume.
     """
 
     def test_every_sheet_exists(self):
@@ -158,10 +158,11 @@ class TheTypefaceIsGenerated(unittest.TestCase):
 
 
 class TheTokenSheetIsGenerated(unittest.TestCase):
-    """web/heyoz-tokens.css is pruned from the vendored palette, not hand-cut.
+    """web/sarib-tokens.css is pruned from the vendored kit, not hand-cut.
 
-    The vendored sheet carries an entire design system; this app reaches a
-    small fraction of it, and the rest is dead weight on a render-blocking
+    The vendored sheet carries the whole Sarib design system plus its drop-in
+    base element styles; this app reaches a small fraction of the tokens and
+    none of the base styles, and the rest is dead weight on a render-blocking
     resource. Cutting it by hand would work exactly once - the next re-vendor
     would restore it silently - so the cut is a generator and this is what
     stops it rotting.
@@ -170,10 +171,10 @@ class TheTokenSheetIsGenerated(unittest.TestCase):
     def test_the_shipped_sheet_matches_the_generator(self):
         self.assertEqual(
             gen_tokens.main(["--check"]), 0,
-            "web/heyoz-tokens.css is stale. Run "
+            "web/sarib-tokens.css is stale. Run "
             "`python tools/gen_tokens_subset.py` and commit the result.")
 
-    def test_the_full_palette_is_kept_for_regeneration(self):
+    def test_the_full_kit_is_kept_for_regeneration(self):
         self.assertTrue(
             gen_tokens.SOURCE.is_file(),
             f"{gen_tokens.SOURCE.relative_to(ROOT)} is missing - the pruned "
@@ -187,7 +188,7 @@ class TheTokenSheetIsGenerated(unittest.TestCase):
         error, just an unstyled control. So the check is direct: every token
         named anywhere outside the sheet is defined inside the shipped one.
         """
-        shipped = _read(WEB / "heyoz-tokens.css")
+        shipped = _read(WEB / "sarib-tokens.css")
         defined = set(re.findall(r"^\s*(--[a-z0-9-]+)\s*:", shipped, re.M))
         # base.css is the app's own vocabulary and defines its own names; the
         # palette only has to satisfy what is left.
@@ -196,6 +197,112 @@ class TheTokenSheetIsGenerated(unittest.TestCase):
         self.assertEqual(
             missing, [],
             "the pruned sheet drops tokens the app still asks for")
+
+    def test_the_kit_base_styles_are_not_shipped(self):
+        """The kit's drop-in `.btn`, `body` and friends would sit in front of
+        the app's own controls - two systems arguing about one button."""
+        shipped = _read(WEB / "sarib-tokens.css")
+        self.assertNotIn("Base element styles", shipped)
+        self.assertIsNone(re.search(r"^\.btn\b", shipped, re.M),
+                          "the kit's .btn shipped beside the app's own")
+
+
+class TheAppIsDrawnInTheSaribSystem(unittest.TestCase):
+    """The design system is Sarib's (syedsarib.com), and only Sarib's.
+
+    The app used to read the HeyOz token layer; that was replaced whole, not
+    layered over. These pin the replacement: the palette the page links is the
+    Sarib sheet, base.css aliases onto --s-* tokens and nothing else, no page
+    or sheet still reaches for an --oz-* name, the system's warm neutrals and
+    brand red are what actually resolve, and the two faces are the system's.
+    """
+
+    PAGES = sorted(p.name for p in WEB.glob("*.html"))
+
+    def test_every_page_links_the_sarib_sheet_before_base(self):
+        for name in self.PAGES:
+            html = _read(WEB / name)
+            with self.subTest(page=name):
+                self.assertNotIn("heyoz-tokens.css", html)
+                tokens = html.find('href="/sarib-tokens.css"')
+                base = html.find('href="/css/base.css"')
+                self.assertNotEqual(tokens, -1, f"{name} does not link sarib-tokens.css")
+                self.assertNotEqual(base, -1, f"{name} does not link base.css")
+                self.assertLess(tokens, base, "the tokens must load before base.css")
+
+    def test_the_heyoz_layer_is_gone(self):
+        self.assertFalse((WEB / "heyoz-tokens.css").exists())
+        self.assertFalse((ROOT / "vendor" / "heyoz-tokens.css").exists())
+        sources = ([WEB / "fonts.css", WEB / "sw.js", WEB / "vercel.json"]
+                   + sorted(WEB_CSS_DIR.glob("*.css"))
+                   + sorted(WEB.glob("*.html")) + sorted(WEB.glob("js/*.js")))
+        for path in sources:
+            with self.subTest(file=path.name):
+                text = _read(path)
+                self.assertNotIn("--oz-", text)
+                self.assertNotIn("heyoz-tokens", text)
+
+    def test_base_aliases_only_onto_sarib_tokens(self):
+        """Every token base.css reads from outside itself is an --s- token."""
+        css = _web_css("base.css")
+        own = set(re.findall(r"^\s*(--[a-z0-9-]+)\s*:", css, re.M))
+        read = set(re.findall(r"var\((--[a-z0-9-]+)", css)) - own
+        foreign = sorted(t for t in read if not t.startswith("--s-"))
+        self.assertEqual(foreign, [], "base.css reads tokens from outside the system")
+        for alias, token in (("--c-bg", "--s-color-background"),
+                             ("--c-ink", "--s-color-content-primary"),
+                             ("--c-line", "--s-color-border-primary"),
+                             ("--c-accent", "--s-color-fill-brand"),
+                             ("--c-focus", "--s-color-border-focus"),
+                             ("--radius", "--s-radius-8"),
+                             ("--radius-lg", "--s-radius-10")):
+            with self.subTest(alias=alias):
+                self.assertRegex(css, rf"(?m)^\s*{re.escape(alias)}:\s*var\({re.escape(token)}\);")
+
+    def test_the_system_values_are_what_resolve(self):
+        """The shipped sheet carries the system's own values: warm ink and
+        ground in both modes, the brand red, the red-orange focus ring."""
+        shipped = _read(WEB / "sarib-tokens.css")
+        light = shipped[:shipped.index('[data-theme="dark"]')]
+        dark = shipped[shipped.index('[data-theme="dark"]'):]
+        for block, token, value in (
+                (light, "--s-color-background", "#ffffff"),
+                (light, "--s-color-content-primary", "#0f0e0c"),
+                (light, "--s-color-border-primary", "#e4e4e1"),
+                (light, "--s-color-fill-brand", "#c31800"),
+                (light, "--s-color-border-focus", "#c31800"),
+                (dark, "--s-color-background", "#0f0e0c"),
+                (dark, "--s-color-content-primary", "#f7f7f4"),
+                (dark, "--s-color-border-focus", "#ff7559")):
+            with self.subTest(token=token, value=value):
+                self.assertRegex(block, rf"{re.escape(token)}:\s*{re.escape(value)};")
+
+    def test_no_true_grey_in_the_named_values(self):
+        """Warm, never grey: no colour literal in base.css has r == g == b
+        other than pure white and black."""
+        css = _web_css("base.css")
+        for hexval in re.findall(r"#([0-9a-fA-F]{6})\b", css):
+            r, g, b = (int(hexval[i:i + 2], 16) for i in (0, 2, 4))
+            with self.subTest(colour=hexval):
+                self.assertFalse(r == g == b and r not in (0, 255),
+                                 f"#{hexval} is a true grey")
+
+    def test_the_faces_are_the_systems(self):
+        cfg = gen_fonts.load_config()
+        self.assertEqual(cfg["display"], "Google Sans Flex")
+        self.assertEqual(cfg["mono"], "Google Sans Code")
+
+    def test_weights_stay_at_400_and_500(self):
+        """The system renders regular and medium only."""
+        for name in WEB_SHEETS:
+            for w in re.findall(r"font-weight\s*:\s*(\d{3})", _web_css(name)):
+                with self.subTest(sheet=name, weight=w):
+                    self.assertIn(w, ("400", "500"))
+
+    def test_no_all_caps_labels(self):
+        for name in WEB_SHEETS:
+            with self.subTest(sheet=name):
+                self.assertNotIn("text-transform: uppercase", _web_css(name))
 
 
 class MotionIsTokenised(unittest.TestCase):

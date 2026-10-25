@@ -20,7 +20,7 @@
 
 "use strict";
 
-const VERSION = "v23";
+const VERSION = "v24";
 const SHELL = `pocketsize-shell-${VERSION}`;
 const HEAVY = `pocketsize-heavy-${VERSION}`;
 
@@ -29,7 +29,7 @@ const HEAVY = `pocketsize-heavy-${VERSION}`;
  * touch". */
 const PRECACHE = [
   "/",
-  "/heyoz-tokens.css",
+  "/sarib-tokens.css",
   "/fonts.css",
   "/css/base.css", "/css/layout.css", "/css/controls.css",
   "/css/queue.css", "/css/compare.css",
@@ -71,7 +71,7 @@ const HEAVY_PRECACHE = [
   "/vendor/mozjpeg.js", "/vendor/mozjpeg_enc.wasm",
   "/vendor/oxipng.js", "/vendor/squoosh_oxipng_bg.wasm",
   "/vendor/webp.js", "/vendor/webp_enc_simd.wasm",
-  "/fonts/instrument-serif-latin.7079569f0c.woff2", "/fonts/instrument-serif-latin-ext.f763c50a97.woff2", "/fonts/geist-mono-latin.1fe09442cb.woff2", "/fonts/geist-mono-latin-ext.47813818d9.woff2",
+  "/fonts/google-sans-flex-latin.b1079c0bb8.woff2", "/fonts/google-sans-flex-latin-ext.f10f285f15.woff2", "/fonts/google-sans-code-latin.43c84eae13.woff2", "/fonts/google-sans-code-latin-ext.f972a39944.woff2",
 ];
 
 /* And what it does NOT block on. avif_enc.wasm is 3,485,872 bytes - 1,116,248

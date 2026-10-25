@@ -5,8 +5,8 @@
  * light on every visit. Classic scripts in the head block rendering, which is
  * exactly the property wanted here - the work is two property reads.
  *
- * The token layer (heyoz-tokens.css) flips its palette on data-theme="dark" /
- * "light" and knows nothing about prefers-color-scheme. So the three states
+ * The token layer (sarib-tokens.css) flips its palette on data-theme="dark"
+ * and treats everything else as light. So the three states
  * the header button offers - Light, Dark, Match my device - are resolved HERE:
  * an explicit choice is stamped as itself, and "match my device" is stamped as
  * whatever the OS currently answers, re-stamped live if that answer changes.
