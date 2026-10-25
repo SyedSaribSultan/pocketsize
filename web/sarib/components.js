@@ -1,4 +1,4 @@
-// Sarib design system: behaviours v2.3.0. ESM, no dependencies.
+// Sarib design system: behaviours v2.4.0. ESM, no dependencies.
 // Opt-in through data attributes; one set of delegated listeners on document, so
 // elements added later work too. Framework apps may skip this file and keep their
 // own state, as long as the DOM, ARIA and classes match demo/index.html.
@@ -20,6 +20,10 @@
 //   data-s-toggle           on a button: flips aria-pressed (chips)
 //   data-s-autogrow         on a textarea: grows to --s-field-max-h, marks .s-field[data-grown]
 //   toast(message, {tone, action, onAction, duration})
+//   data-s-amount           on a .s-amount (v2.4): live grouping, caret kept, figures that scale down
+//                           and settle in; data-s-amount-add / -set on quick chips; data-keypad builds
+//                           the phone keypad. amount(el) returns { value, set(n), add(n) }; the root
+//                           fires "s-amount" with detail { value } (a Number, or null when empty).
 //
 // Exit motion waits for the fast duration token; reduced motion makes it 0.
 //
@@ -363,6 +367,212 @@ function grow(ta) {
   if (field) field.toggleAttribute("data-grown", ta.scrollHeight > lh * 2 + parseFloat(getComputedStyle(ta).paddingTop) * 2 + 1);
 }
 
+/* ---------- display amount field (v2.4) ---------- */
+// The input stays the real value (caret, selection, autofill, screen readers). An aria-hidden figures
+// layer draws the same text on top so new digits can settle in and separators can sit back in faint.
+const amounts = new WeakMap();
+const MINUS = "−";
+function amountFmt(root) {
+  const locale = root.dataset.locale || doc.documentElement.lang || undefined;
+  let group = ",", decimal = ".";
+  try {
+    for (const p of new Intl.NumberFormat(locale).formatToParts(12345.6)) {
+      if (p.type === "group") group = p.value;
+      if (p.type === "decimal") decimal = p.value;
+    }
+  } catch { /* keep the defaults */ }
+  let ints;
+  try { ints = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }); } catch { ints = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }); }
+  const dec = root.dataset.decimals === undefined ? 2 : Math.max(0, parseInt(root.dataset.decimals, 10) || 0);
+  return { group, decimal, ints, dec, max: parseInt(root.dataset.maxDigits, 10) || 12, neg: root.hasAttribute("data-allow-negative") };
+}
+// "Rs 1,250.5" (any paste) -> { neg, int: "1250", frac: "5", point: true }
+function amountParse(text, f) {
+  let neg = false, int = "", frac = "", point = false;
+  for (const ch of text) {
+    if ((ch === "-" || ch === MINUS) && f.neg && !int && !point) neg = !neg;
+    else if (ch >= "0" && ch <= "9") { if (point) { if (frac.length < f.dec) frac += ch; } else int += ch; }
+    else if ((ch === f.decimal || (ch === "." && f.group !== ".")) && f.dec > 0 && !point) point = true;
+  }
+  int = int.replace(/^0+(?=\d)/, "");
+  if (point && !int) int = "0";
+  return { neg, int, frac, point };
+}
+function amountText(p, f) {
+  if (!p.int && !p.neg) return "";
+  const grouped = p.int ? f.ints.format(BigInt(p.int)) : "";
+  return `${p.neg ? "-" : ""}${grouped}${p.point ? f.decimal + p.frac : ""}`;
+}
+const amountDigits = (p) => p.int + p.frac;
+const isSig = (ch, f) => (ch >= "0" && ch <= "9") || ch === "-" || ch === f.decimal;
+const significant = (s, f) => [...s].filter((ch) => isSig(ch, f)).length;
+
+function amountRender(st, inserted) {
+  const { root, input, figures, f } = st;
+  const text = input.value;
+  const box = doc.createElement("span");
+  box.className = "s-amount__text";
+  if (text && root.dataset.tone) {
+    const sign = doc.createElement("span");
+    sign.className = "s-amount__sign";
+    sign.textContent = root.dataset.tone === "income" ? "+" : MINUS;
+    box.append(sign);
+  }
+  let digit = 0, frac = false;
+  for (const ch of text) {
+    const c = doc.createElement("span");
+    c.className = "s-amount__ch";
+    const isDigit = ch >= "0" && ch <= "9";
+    if (ch === f.decimal && f.dec > 0) frac = true;
+    if (isDigit) { if (inserted.has(digit)) c.setAttribute("data-new", ""); digit++; }
+    if (frac) c.classList.add("s-amount__ch--frac");
+    else if (!isDigit && ch !== "-") c.classList.add("s-amount__ch--sep");
+    c.textContent = ch === "-" ? MINUS : ch;
+    box.append(c);
+  }
+  figures.replaceChildren(box);
+  amountFit(st);
+}
+function amountFit(st) {
+  const { root, input, figures, win } = st;
+  const box = figures.firstChild;
+  const cs = getComputedStyle(input);
+  const size = parseFloat(cs.fontSize) || 1;
+  const pad = parseFloat(cs.paddingInlineStart) || 0;
+  const sign = box?.querySelector?.(".s-amount__sign")?.offsetWidth || 0;
+  const center = root.classList.contains("s-amount--center");
+  const need = (box?.offsetWidth || 0) + (center ? sign * 2 : pad) + size * 0.2; // room for the caret
+  const min = parseFloat(getComputedStyle(root).getPropertyValue("--s-amount-fit-min")) || 0.4;
+  const fit = win.clientWidth > 0 && need > 0 ? Math.max(min, Math.min(1, win.clientWidth / need)) : 1;
+  root.style.setProperty("--_fit", String(Math.round(fit * 1000) / 1000));
+  root.toggleAttribute("data-overflow", input.scrollWidth > input.clientWidth + 1);
+}
+function amountCommit(st, p, caretSig, announce = false) {
+  const { root, input, f } = st;
+  const prev = st.digits;
+  const text = amountText(p, f);
+  input.value = text;
+  st.prev = text;
+  // Keep the caret after the same number of significant characters (digits, sign, decimal point).
+  if (caretSig !== null && doc.activeElement === input) {
+    let i = 0, n = 0;
+    while (i < text.length && n < caretSig) { if (isSig(text[i], f)) n++; i++; }
+    input.setSelectionRange(i, i);
+  }
+  // Which digits are new: everything between the unchanged head and the unchanged tail.
+  const next = amountDigits(p);
+  let a = 0;
+  while (a < prev.length && a < next.length && prev[a] === next[a]) a++;
+  let b = 0;
+  while (b < prev.length - a && b < next.length - a && prev[prev.length - 1 - b] === next[next.length - 1 - b]) b++;
+  const inserted = new Set();
+  if (st.ready) for (let k = a; k < next.length - b; k++) inserted.add(k);
+  st.digits = next;
+  const value = p.int ? Number(`${p.neg ? "-" : ""}${p.int}.${p.frac || 0}`) : null;
+  root.dataset.value = value === null ? "" : String(value);
+  const hidden = root.querySelector("input.s-amount__value");
+  if (hidden) hidden.value = root.dataset.value;
+  amountRender(st, inserted);
+  if (announce) {
+    const cur = root.querySelector(".s-amount__currency")?.textContent.trim();
+    st.live.textContent = text ? `${cur ? `${cur} ` : ""}${text}` : "Empty";
+  }
+  root.dispatchEvent(new CustomEvent("s-amount", { bubbles: true, detail: { value, text } }));
+}
+function amountKeypad(st) {
+  const { root, input, f } = st;
+  input.setAttribute("inputmode", "none"); // the keypad is the keyboard on phones
+  let pad = root.querySelector(".s-amount__keypad");
+  if (!pad) {
+    pad = doc.createElement("div");
+    pad.className = "s-amount__keypad";
+    pad.setAttribute("role", "group");
+    pad.setAttribute("aria-label", "Keypad");
+    const extra = f.dec > 0 ? f.decimal : f.neg ? MINUS : "";
+    for (const k of ["1", "2", "3", "4", "5", "6", "7", "8", "9", extra, "0", "back"]) {
+      const b = doc.createElement("button");
+      b.type = "button";
+      b.className = "s-amount__key";
+      if (k === "back") {
+        b.dataset.key = "back";
+        b.setAttribute("aria-label", "Delete last digit");
+        b.innerHTML = '<span class="s-icon" data-icon="delete" aria-hidden="true"></span>';
+      } else if (!k) { b.disabled = true; b.setAttribute("aria-hidden", "true"); b.tabIndex = -1; }
+      else { b.dataset.key = k; b.textContent = k; if (k === MINUS) b.setAttribute("aria-label", "Negative"); }
+      pad.append(b);
+    }
+    root.append(pad);
+  }
+  // Mouse and touch keep the caret in the input; keyboard users can still tab to each key.
+  pad.addEventListener("pointerdown", (e) => { if (doc.activeElement === input) e.preventDefault(); });
+}
+function amountPress(st, key) {
+  const { input, f } = st;
+  const focused = doc.activeElement === input;
+  const v = input.value;
+  let start = focused ? input.selectionStart ?? v.length : v.length;
+  const end = focused ? input.selectionEnd ?? v.length : v.length;
+  let next;
+  if (key === "back") {
+    if (start === end) { while (start > 0 && !isSig(v[start - 1], f)) start--; start = Math.max(0, start - 1); }
+    next = v.slice(0, start) + v.slice(end);
+  } else {
+    next = v.slice(0, start) + (key === MINUS ? "-" : key) + v.slice(end);
+    start += 1;
+  }
+  const p = amountParse(next, f);
+  if (p.int.length > f.max) return;
+  amountCommit(st, p, significant(next.slice(0, start), f), true);
+}
+export function amount(root) {
+  if (!root) return null;
+  let st = amounts.get(root);
+  if (!st) {
+    const input = root.querySelector(".s-amount__input");
+    const win = root.querySelector(".s-amount__window");
+    if (!input || !win) return null;
+    const figures = doc.createElement("span");
+    figures.className = "s-amount__figures";
+    figures.setAttribute("aria-hidden", "true");
+    input.after(figures);
+    const live = doc.createElement("span");
+    live.className = "s-sr-only";
+    live.setAttribute("aria-live", "polite");
+    root.append(live);
+    st = { root, input, win, figures, live, f: amountFmt(root), digits: "", ready: false };
+    amounts.set(root, st);
+    for (const [k, v] of [["autocomplete", "off"], ["autocorrect", "off"], ["autocapitalize", "off"], ["spellcheck", "false"]]) if (!input.hasAttribute(k)) input.setAttribute(k, v);
+    if (!input.hasAttribute("inputmode")) input.setAttribute("inputmode", st.f.dec > 0 ? "decimal" : "numeric");
+    if (root.hasAttribute("data-keypad")) amountKeypad(st);
+    amountCommit(st, amountParse(input.value, st.f), null);
+    st.ready = true;
+    root.setAttribute("data-ready", "");
+    win.addEventListener("scroll", () => { win.scrollLeft = 0; win.scrollTop = 0; }); // overflow: clip fallback
+    if (typeof ResizeObserver === "function") new ResizeObserver(() => amountFit(st)).observe(win);
+    doc.fonts?.ready.then(() => amountFit(st));
+  }
+  const api = {
+    get value() { return root.dataset.value === "" ? null : Number(root.dataset.value); },
+    set(n) { amountCommit(st, amountParse(n === null || n === undefined ? "" : String(n).replace(".", st.f.decimal), st.f), null); },
+    add(n) { const k = 10 ** st.f.dec; api.set(Math.round((Number(root.dataset.value || 0) + Number(n)) * k) / k); },
+  };
+  return api;
+}
+function amountInput(input) {
+  const root = input.closest("[data-s-amount]");
+  if (!root) return;
+  const fresh = !amounts.has(root);
+  amount(root);
+  const st = amounts.get(root);
+  if (!st || fresh) return;
+  const v = input.value, caret = input.selectionStart ?? v.length;
+  const p = amountParse(v, st.f);
+  if (p.int.length > st.f.max) { // too many digits: undo the keystroke
+    return amountCommit(st, amountParse(st.prev ?? "", st.f), Math.max(0, significant(v.slice(0, caret), st.f) - 1));
+  }
+  amountCommit(st, p, significant(v.slice(0, caret), st.f));
+}
+
 /* ---------- wiring ---------- */
 let wired = false;
 export function init() {
@@ -417,6 +627,17 @@ export function init() {
     }
     const tog = t.closest("[data-s-toggle][aria-pressed]");
     if (tog && !tog.disabled) { tog.setAttribute("aria-pressed", String(tog.getAttribute("aria-pressed") !== "true")); return; }
+
+    const key = t.closest("[data-s-amount] .s-amount__key[data-key]");
+    if (key && !key.disabled) { const root = key.closest("[data-s-amount]"); amount(root); amountPress(amounts.get(root), key.dataset.key); return; }
+    const quick = t.closest("[data-s-amount] [data-s-amount-add], [data-s-amount] [data-s-amount-set]");
+    if (quick && !quick.disabled) {
+      const root = quick.closest("[data-s-amount]"), api = amount(root);
+      quick.hasAttribute("data-s-amount-set") ? api.set(quick.dataset.sAmountSet) : api.add(quick.dataset.sAmountAdd);
+      const st = amounts.get(root);
+      st.live.textContent = st.input.value || "Empty";
+      return;
+    }
 
     const row = t.closest('[data-s-tree] [role="treeitem"] > .s-tree__row');
     if (row && !t.closest(".s-tree__actions")) {
@@ -483,11 +704,16 @@ export function init() {
 
   // Native <dialog> Esc goes through "cancel": route it through the exit animation.
   doc.addEventListener("cancel", (e) => { if (e.target.tagName === "DIALOG" && managed.has(e.target)) { e.preventDefault(); closeOverlay(e.target); } }, true);
-  doc.addEventListener("input", (e) => { if (e.target.matches?.("textarea[data-s-autogrow]")) grow(e.target); });
+  doc.addEventListener("input", (e) => {
+    if (e.target.matches?.("textarea[data-s-autogrow]")) grow(e.target);
+    if (e.target.matches?.("[data-s-amount] .s-amount__input")) amountInput(e.target);
+  });
+  doc.addEventListener("focusin", (e) => { const r = e.target instanceof Element ? e.target.closest("[data-s-amount]") : null; if (r) amount(r); });
 
   const setup = () => {
     nameTips();
     doc.querySelectorAll("textarea[data-s-autogrow]").forEach(grow);
+    doc.querySelectorAll("[data-s-amount]").forEach((r) => amount(r));
     doc.querySelectorAll("[data-s-tabs]").forEach((list) => {
       const sel = list.querySelector('[role="tab"][aria-selected="true"]') || list.querySelector('[role="tab"]');
       if (sel) selectTab(sel, false);

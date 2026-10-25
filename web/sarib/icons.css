@@ -23,6 +23,7 @@
   .s-icon[data-icon="circle-check"] { -webkit-mask-image: url("icons/circle-check.svg"); mask-image: url("icons/circle-check.svg"); }
   .s-icon[data-icon="close"] { -webkit-mask-image: url("icons/close.svg"); mask-image: url("icons/close.svg"); }
   .s-icon[data-icon="copy"] { -webkit-mask-image: url("icons/copy.svg"); mask-image: url("icons/copy.svg"); }
+  .s-icon[data-icon="delete"] { -webkit-mask-image: url("icons/delete.svg"); mask-image: url("icons/delete.svg"); }
   .s-icon[data-icon="download"] { -webkit-mask-image: url("icons/download.svg"); mask-image: url("icons/download.svg"); }
   .s-icon[data-icon="edit"] { -webkit-mask-image: url("icons/edit.svg"); mask-image: url("icons/edit.svg"); }
   .s-icon[data-icon="ellipsis"] { -webkit-mask-image: url("icons/ellipsis.svg"); mask-image: url("icons/ellipsis.svg"); }
