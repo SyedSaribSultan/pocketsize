@@ -1,4 +1,4 @@
-// Sarib design system: behaviours v2.0.0. ESM, no dependencies.
+// Sarib design system: behaviours v2.1.0. ESM, no dependencies.
 // Opt-in through data attributes; one set of delegated listeners on document, so
 // elements added later work too. Framework apps may skip this file and keep their
 // own state, as long as the DOM, ARIA and classes match demo/index.html.
@@ -8,6 +8,12 @@
 //   data-s-backdrop="id"    a .s-backdrop that belongs to drawer #id (click closes)
 //   data-s-menu             trigger with aria-controls="menuId" (role=menu | role=listbox)
 //   data-s-tooltip          on a .s-tip: tap toggles, Esc / outside click closes
+//   data-s-tip="Label"      on any control (icon-only buttons, rail items): a label tooltip on hover
+//                           and keyboard focus, never clipped (fixed, in <body>). Side: data-s-tip-side
+//                           = bottom (default) | top | right | left; rails default to right.
+//   data-s-chart-value="75 views" (+ data-s-chart-label="Saturday") on a chart mark (SVG rect,
+//                           circle, path): the same float, drawn as .s-chart-tip, above the mark.
+//                           Mouse hover, keyboard focus (give marks tabindex="0") or a tap.
 //   data-s-tabs             on role=tablist: arrows, Home/End, panels via aria-controls
 //   data-s-tree             on role=tree: arrows, Enter/Space, expand/collapse
 //   data-s-seg              on a .s-seg group of aria-pressed buttons: single choice
@@ -273,6 +279,71 @@ export function toast(message, { tone, action, onAction, duration } = {}) {
   return { el, dismiss };
 }
 
+/* ---------- label tips: data-s-tip="Label" ----------
+   One shared .s-tooltip.s-tooltip--float in <body>, placed with fixed coordinates so a scrolling rail
+   or sidebar never clips it. Fine pointers: hover (420ms first, instant while one is showing).
+   Keyboard: focus-visible. Leaves on pointer out, blur, Esc, scroll or click. The control keeps its
+   accessible name (aria-label is set from the tip when missing), so the tip itself is aria-hidden. */
+const TIP = "[data-s-tip], [data-s-chart-value]";
+let tipEl = null, tipFor = null, tipTimer = 0, tipWarm = 0;
+function floatTip() {
+  if (tipEl && doc.contains(tipEl)) return tipEl;
+  tipEl = doc.createElement("span");
+  tipEl.setAttribute("aria-hidden", "true");
+  doc.body.append(tipEl);
+  return tipEl;
+}
+function fillTip(t) {
+  const tip = floatTip();
+  const chart = t.hasAttribute("data-s-chart-value");
+  tip.className = chart ? "s-chart-tip s-chart-tip--float" : "s-tooltip s-tooltip--float";
+  tip.textContent = "";
+  if (!chart) tip.textContent = t.getAttribute("data-s-tip");
+  else {
+    const label = t.getAttribute("data-s-chart-label");
+    if (label) tip.append(Object.assign(doc.createElement("span"), { className: "s-chart-tip__label", textContent: label }));
+    tip.append(Object.assign(doc.createElement("span"), { className: "s-chart-tip__value", textContent: t.getAttribute("data-s-chart-value") }));
+  }
+}
+const px = (name) => parseFloat(getComputedStyle(doc.documentElement).getPropertyValue(name)) || 0;
+function placeTip(t) {
+  const tip = floatTip();
+  const side = t.getAttribute("data-s-tip-side") || (t.closest(".s-sidebar--rail") ? "right" : t.hasAttribute("data-s-chart-value") ? "top" : "bottom");
+  const r = t.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight, gap = px("--s-spacing-3"), edge = px("--s-spacing-3");
+  let x = side === "right" ? r.right + gap : side === "left" ? r.left - gap - w : r.left + r.width / 2 - w / 2;
+  let y = side === "top" ? r.top - gap - h : side === "bottom" ? r.bottom + gap : r.top + r.height / 2 - h / 2;
+  if (side === "bottom" && y + h > innerHeight - edge) y = r.top - gap - h;
+  if (side === "top" && y < edge) y = r.bottom + gap;
+  x = Math.max(edge, Math.min(x, innerWidth - w - edge));
+  y = Math.max(edge, Math.min(y, innerHeight - h - edge));
+  tip.style.left = `${Math.round(x)}px`;
+  tip.style.top = `${Math.round(y)}px`;
+  tip.setAttribute("data-side", side);
+}
+function showTip(t, now = false) {
+  clearTimeout(tipTimer);
+  const go = () => {
+    const tip = floatTip();
+    fillTip(t);
+    tipFor = t;
+    placeTip(t);
+    tip.setAttribute("data-open", "");
+  };
+  now || Date.now() - tipWarm < slow() ? go() : (tipTimer = setTimeout(go, slow()));
+}
+function hideTip() {
+  clearTimeout(tipTimer);
+  if (!tipFor) return;
+  tipFor = null;
+  tipWarm = Date.now();
+  tipEl?.removeAttribute("data-open");
+}
+function nameTips(root = doc) {
+  root.querySelectorAll?.("[data-s-tip]:not([aria-label]):not([aria-labelledby])").forEach((t) => {
+    if (!t.textContent.trim()) t.setAttribute("aria-label", t.getAttribute("data-s-tip"));
+  });
+}
+
 /* ---------- autogrow ---------- */
 function grow(ta) {
   const max = parseFloat(getComputedStyle(ta).maxHeight) || Infinity;
@@ -372,11 +443,43 @@ export function init() {
     if (it && it === t) treeKeys(e, it.closest("[data-s-tree]"), it);
   });
 
+  // Label tips (data-s-tip).
+  doc.addEventListener("pointerover", (e) => {
+    if (e.pointerType !== "mouse") return;
+    const t = e.target instanceof Element ? e.target.closest(TIP) : null;
+    if (t && t !== tipFor && !t.matches(":disabled")) showTip(t, t.hasAttribute("data-s-chart-value"));
+    else if (!t) hideTip();
+  });
+  doc.addEventListener("pointerout", (e) => {
+    const t = e.target instanceof Element ? e.target.closest(TIP) : null;
+    if (t && !(e.relatedTarget instanceof Element && t.contains(e.relatedTarget))) hideTip();
+  });
+  doc.addEventListener("focusin", (e) => {
+    const t = e.target instanceof Element ? e.target.closest(TIP) : null;
+    if (t && t.matches(":focus-visible")) showTip(t, true);
+  });
+  doc.addEventListener("focusout", hideTip);
+  doc.addEventListener("pointerdown", (e) => {
+    const mark = e.pointerType !== "mouse" && e.target instanceof Element ? e.target.closest("[data-s-chart-value]") : null;
+    if (mark && mark !== tipFor) showTip(mark, true); // touch: a tap shows the value
+    else hideTip();
+  }, true);
+  doc.addEventListener("scroll", hideTip, true);
+  doc.addEventListener("keydown", (e) => { if (e.key === "Escape" && tipFor) hideTip(); }, true);
+  let naming = false;
+  new MutationObserver(() => {
+    if (tipFor && !tipFor.isConnected) hideTip();
+    if (naming) return;
+    naming = true;
+    requestAnimationFrame(() => { naming = false; nameTips(); });
+  }).observe(doc.documentElement, { subtree: true, childList: true, attributeFilter: ["data-s-tip"] });
+
   // Native <dialog> Esc goes through "cancel": route it through the exit animation.
   doc.addEventListener("cancel", (e) => { if (e.target.tagName === "DIALOG") { e.preventDefault(); closeOverlay(e.target); } }, true);
   doc.addEventListener("input", (e) => { if (e.target.matches?.("textarea[data-s-autogrow]")) grow(e.target); });
 
   const setup = () => {
+    nameTips();
     doc.querySelectorAll("textarea[data-s-autogrow]").forEach(grow);
     doc.querySelectorAll("[data-s-tabs]").forEach((list) => {
       const sel = list.querySelector('[role="tab"][aria-selected="true"]') || list.querySelector('[role="tab"]');

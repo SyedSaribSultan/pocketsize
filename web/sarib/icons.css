@@ -30,6 +30,7 @@
   .s-icon[data-icon="eye-off"] { -webkit-mask-image: url("icons/eye-off.svg"); mask-image: url("icons/eye-off.svg"); }
   .s-icon[data-icon="file"] { -webkit-mask-image: url("icons/file.svg"); mask-image: url("icons/file.svg"); }
   .s-icon[data-icon="file-text"] { -webkit-mask-image: url("icons/file-text.svg"); mask-image: url("icons/file-text.svg"); }
+  .s-icon[data-icon="fit"] { -webkit-mask-image: url("icons/fit.svg"); mask-image: url("icons/fit.svg"); }
   .s-icon[data-icon="folder"] { -webkit-mask-image: url("icons/folder.svg"); mask-image: url("icons/folder.svg"); }
   .s-icon[data-icon="folder-open"] { -webkit-mask-image: url("icons/folder-open.svg"); mask-image: url("icons/folder-open.svg"); }
   .s-icon[data-icon="funnel"] { -webkit-mask-image: url("icons/funnel.svg"); mask-image: url("icons/funnel.svg"); }
