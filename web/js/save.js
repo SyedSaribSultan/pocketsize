@@ -101,7 +101,7 @@ export async function copyImage(it) {
       ? "Copied. Paste it anywhere"
       : "Copied as PNG, the only image format clipboards take");
   } catch (e) {
-    toast(`Could not copy: ${e && e.message ? e.message : e}`);
+    toast(`Could not copy: ${e && e.message ? e.message : e}`, null, "critical");
   } finally {
     btn.disabled = false;
   }
@@ -116,7 +116,7 @@ export async function copyImage(it) {
 function buildReport(done, names) {
   const lines = [];
   const t = totals();
-  lines.push(`Pocketsize report — ${done.length} `
+  lines.push(`Pocketsize report: ${done.length} `
     + `picture${done.length === 1 ? "" : "s"}`);
   lines.push(`${human(t.before)} in, ${human(t.after)} out, ${human(t.saved)} saved.`);
   lines.push("Everything ran in this browser. Nothing was uploaded.");
@@ -307,7 +307,7 @@ export async function downloadAll() {
     setTimeout(() => setText($("save-label"), "Saved ✓"), 80);
     setTimeout(() => scheduleRender(), 2200);
   } catch {
-    toast("Could not build the zip. Try downloading them one at a time");
+    toast("Could not build the zip. Try downloading them one at a time.", null, "critical");
   }
   scheduleRender();
 }

@@ -9,7 +9,11 @@
  *      is the bug this probe exists for - probe_mobile checked overhang and
  *      touch targets and passed while the sections sat on top of each other);
  *   3. nothing inside the sidebar is clipped by the sidebar's own edge;
- *   4. below 861px every interactive control clears the 44px touch floor.
+ *   4. below 768px (the system's phone width), with touch emulated so the
+ *      page sees a coarse pointer, every interactive control clears the 44px
+ *      touch floor. The floor is the design system's own coarse-pointer rule
+ *      (plus the app's few additions in controls.css), so a mouse at the
+ *      same width keeps the compact heights.
  */
 
 import { spawn } from "node:child_process";
@@ -31,7 +35,7 @@ const b = await puppeteer.launch({
 let bad = 0;
 const ok = (c, n) => { if (c) console.log(`  ok ${n}`); else { console.error(`FAIL ${n}`); bad++; } };
 
-const WIDTHS = [320, 360, 375, 414, 430, 568, 600, 768, 800, 860, 861, 900, 1024, 1280, 1440, 1920];
+const WIDTHS = [320, 360, 375, 414, 430, 568, 600, 767, 768, 800, 860, 900, 1024, 1025, 1280, 1440, 1920];
 
 /* Everything measured inside the page, one evaluate per width. */
 async function measure(pg) {
@@ -141,7 +145,12 @@ async function measure(pg) {
       // which is the box a finger aims at.
       if (c.matches(".s-field__input")) c = c.closest(".s-field");
       const r = c.getBoundingClientRect();
-      if (r.height < 43.5) small.push(`${c.id || c.textContent.trim().slice(0, 18)} ${Math.round(r.height)}px`);
+      /* The system gives dense controls (segments, link buttons) an
+         invisible 44 hit area as an absolutely placed ::after rather than
+         growing the drawn control; that box is the target. */
+      const hit = getComputedStyle(c, "::after");
+      const hitH = hit.content !== "none" && hit.position === "absolute" ? parseFloat(hit.height) || 0 : 0;
+      if (Math.max(r.height, hitH) < 43.5) small.push(`${c.id || c.textContent.trim().slice(0, 18)} ${Math.round(r.height)}px`);
     }
 
     return { sideways, overlaps, clipped: clipped.slice(0, 6), truncated: truncated.slice(0, 6),
@@ -173,9 +182,9 @@ try {
   // ---- empty, every width --------------------------------------------------
   for (const height of HEIGHTS) {
     for (const width of WIDTHS) {
-      await pg.setViewport({ width, height });
+      await pg.setViewport({ width, height, hasTouch: width < 768 });
       await new Promise((r) => setTimeout(r, 120));
-      judge(width, `empty @${height}`, await measure(pg), { touch: width < 861 });
+      judge(width, `empty @${height}`, await measure(pg), { touch: width < 768 });
     }
   }
 
@@ -184,9 +193,9 @@ try {
   await uploadAndFinish(pg, [path.join(FIX, "ui.png"), path.join(FIX, "logo.png")], 900_000);
   for (const height of HEIGHTS) {
     for (const width of WIDTHS) {
-      await pg.setViewport({ width, height });
+      await pg.setViewport({ width, height, hasTouch: width < 768 });
       await new Promise((r) => setTimeout(r, 120));
-      judge(width, `with results @${height}`, await measure(pg), { touch: width < 861 });
+      judge(width, `with results @${height}`, await measure(pg), { touch: width < 768 });
     }
   }
 } finally {

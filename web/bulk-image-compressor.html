@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Compress many images at once, free — Pocketsize</title>
+<title>Compress many images at once, free · Pocketsize</title>
 <meta name="description" content="Drop a whole folder: every picture compressed in parallel on your own device, measured against its original, zipped with a written report. No upload, no queue, no account.">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
@@ -14,15 +14,15 @@
      carries the same words for everyone who cannot see it. -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Pocketsize">
-<meta property="og:title" content="Compress many images at once, free — Pocketsize">
+<meta property="og:title" content="Compress many images at once, free · Pocketsize">
 <meta property="og:description" content="Drop a whole folder: every picture compressed in parallel on your own device, measured against its original, zipped with a written report. No upload, no queue, no account.">
 <meta property="og:url" content="https://pocketsize.syedsarib.com/bulk-image-compressor">
 <meta property="og:image" content="https://pocketsize.syedsarib.com/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Pocketsize — compression that proves it didn't ruin your image. Nothing is uploaded.">
+<meta property="og:image:alt" content="Pocketsize: compression that proves it didn't ruin your image. Nothing is uploaded.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Compress many images at once, free — Pocketsize">
+<meta name="twitter:title" content="Compress many images at once, free · Pocketsize">
 <meta name="twitter:description" content="Drop a whole folder: every picture compressed in parallel on your own device, measured against its original, zipped with a written report. No upload, no queue, no account.">
 <meta name="twitter:image" content="https://pocketsize.syedsarib.com/og.png">
 
@@ -70,11 +70,11 @@
   "url": "https://pocketsize.syedsarib.com/",
   "description": "Free, private image compression in the browser. PNG, JPEG, WebP and AVIF. Every result is measured against the original. Nothing is uploaded, and it works offline.",
   "applicationCategory": "MultimediaApplication",
-  "operatingSystem": "Any — runs in the browser",
+  "operatingSystem": "Any, runs in the browser",
   "isAccessibleForFree": true,
   "featureList": [
     "Image compression",
-    "Runs on your device — nothing is uploaded",
+    "Runs on your device: nothing is uploaded",
     "Every result measured against the original",
     "Works offline after one visit"
   ],
@@ -119,7 +119,7 @@
       "name": "How many images can I compress at once?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "There is no built-in limit — batches are bounded by your machine's memory, not by a plan or a paywall. Hundreds of ordinary photos are fine on an ordinary laptop."
+        "text": "There is no built-in limit. Batches are bounded by your machine's memory, not by a plan or a paywall. Hundreds of ordinary photos are fine on an ordinary laptop."
       }
     },
     {
@@ -127,7 +127,7 @@
       "name": "Do all the images get the same settings?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "They follow one plan, and any single image can override it — select a picture and use “Just this image” to redo it with its own format or quality."
+        "text": "They follow one plan, and any single image can override it: select a picture and use “Just this image” to redo it with its own format or quality."
       }
     },
     {
@@ -135,7 +135,7 @@
       "name": "Is a big batch uploaded somewhere to be processed?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "No — nothing is, ever, regardless of batch size. The work is local, which is also why a hundred images do not spend ten minutes uploading first."
+        "text": "No, nothing is, ever, regardless of batch size. The work is local, which is also why a hundred images do not spend ten minutes uploading first."
       }
     }
   ]
@@ -479,11 +479,11 @@
         <span class="spacer"></span>
         <div class="s-toolbar">
           <div class="zoom" role="group" aria-label="Zoom">
-            <button class="s-btn s-btn--ghost s-btn--sm s-btn--icon" type="button" id="zoom-out" aria-label="Zoom out">
+            <button class="s-btn s-btn--ghost s-btn--sm s-btn--icon" type="button" id="zoom-out" aria-label="Zoom out" data-s-tip="Zoom out">
               <span class="s-icon" data-icon="minus" aria-hidden="true"></span>
             </button>
             <span class="s-toolbar__readout" id="zoom-label">Fit</span>
-            <button class="s-btn s-btn--ghost s-btn--sm s-btn--icon" type="button" id="zoom-in" aria-label="Zoom in">
+            <button class="s-btn s-btn--ghost s-btn--sm s-btn--icon" type="button" id="zoom-in" aria-label="Zoom in" data-s-tip="Zoom in">
               <span class="s-icon" data-icon="plus" aria-hidden="true"></span>
             </button>
             <!-- Not also called "Fit": the readout beside it already says "Fit"
@@ -493,7 +493,7 @@
           </div>
           <span class="s-toolbar__sep" aria-hidden="true"></span>
           <!-- The comparison, alone: F or this button hides everything else. -->
-          <button class="s-btn s-btn--ghost s-btn--sm" type="button" id="focus-btn" aria-pressed="false" title="Show only the comparison (F)">
+          <button class="s-btn s-btn--ghost s-btn--sm" type="button" id="focus-btn" aria-pressed="false" data-s-tip="Show only the comparison (F)">
             <span class="s-icon" data-icon="panel-close" aria-hidden="true"></span>
             <span class="s-btn__label">Focus</span>
           </button>
@@ -570,16 +570,16 @@
 <section id="about" aria-labelledby="about-h">
   <div class="about-inner s-prose">
     <h2 id="about-h">Compress a whole folder of images at once</h2>
-    <p class="s-lede">Drop any number of pictures onto this page — or paste, or pick them — and Pocketsize compresses them in parallel, one worker per processor core your machine has. There is no per-file queueing, no “upgrade for batch” wall, and no upload wait, because there is no upload: the work happens on your own computer.</p>
-    <p>Every picture in the batch is measured against its own original, the first finished result appears in seconds, and the batch footer counts progress as it runs. When it is done, one button downloads everything as a zip — with a plain-text report inside recording each file's sizes, measured score, and whether pixels were removed.</p>
+    <p class="s-lede">Drop any number of pictures onto this page (or paste, or pick them) and Pocketsize compresses them in parallel, one worker per processor core your machine has. There is no per-file queueing, no “upgrade for batch” wall, and no upload wait, because there is no upload: the work happens on your own computer.</p>
+    <p>Every picture in the batch is measured against its own original, the first finished result appears in seconds, and the batch footer counts progress as it runs. When it is done, one button downloads everything as a zip, with a plain-text report inside recording each file's sizes, measured score, and whether pixels were removed.</p>
     <p>Your pictures never leave your computer: the compression runs in your browser, on your own device, and <a href="/nothing-is-uploaded">you can verify that yourself in about a minute</a>. After one visit it even works with no internet at all.</p>
-    <p>This page is <a href="/">Pocketsize</a> with the plan pre-set for one job. Nothing is locked — change any control once it is open.</p>
+    <p>This page is <a href="/">Pocketsize</a> with the plan pre-set for one job. Nothing is locked: change any control once it is open.</p>
     <h2>How many images can I compress at once?</h2>
-    <p>There is no built-in limit — batches are bounded by your machine's memory, not by a plan or a paywall. Hundreds of ordinary photos are fine on an ordinary laptop.</p>
+    <p>There is no built-in limit. Batches are bounded by your machine's memory, not by a plan or a paywall. Hundreds of ordinary photos are fine on an ordinary laptop.</p>
     <h2>Do all the images get the same settings?</h2>
-    <p>They follow one plan, and any single image can override it — select a picture and use “Just this image” to redo it with its own format or quality.</p>
+    <p>They follow one plan, and any single image can override it: select a picture and use “Just this image” to redo it with its own format or quality.</p>
     <h2>Is a big batch uploaded somewhere to be processed?</h2>
-    <p>No — nothing is, ever, regardless of batch size. The work is local, which is also why a hundred images do not spend ten minutes uploading first.</p>
+    <p>No, nothing is, ever, regardless of batch size. The work is local, which is also why a hundred images do not spend ten minutes uploading first.</p>
   </div>
 </section>
 

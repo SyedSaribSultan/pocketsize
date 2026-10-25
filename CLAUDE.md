@@ -17,7 +17,9 @@ improvise a UX decision mid-implementation.**
    ("always PNG — every pixel kept"). Say exactly what happens, no cleverness.
 3. **Resize disclosure is non-negotiable:** if pixels were removed, the same
    line that shows the % says so — never after, never smaller.
-4. **Legibility floor:** no text below 13px; body/control text 15–16px;
+4. **Legibility floor:** no text below 13px; body text 15–16px; control text
+   is the design system's (sm buttons and fields are body-sm 14, and the
+   library is canonical there, so the app sets no floor of its own);
    spacious spacing.
 5. **The page reads as a sequence:** add pictures → one question → result →
    evidence on demand.

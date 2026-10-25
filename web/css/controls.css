@@ -75,9 +75,11 @@
     color var(--s-motion-duration-fast) var(--s-motion-easing-standard);
 }
 #more-choices > summary::-webkit-details-marker { display: none; }
-#more-choices > summary:hover {
-  background: var(--s-color-fill-primary-variant-hover);
-  color: var(--s-color-content-primary);
+@media (hover: hover) {
+  #more-choices > summary:hover {
+    background: var(--s-color-fill-primary-variant-hover);
+    color: var(--s-color-content-primary);
+  }
 }
 #more-choices > summary > [data-icon] {
   transition: transform var(--s-motion-duration-fast) var(--s-motion-easing-standard);
@@ -156,20 +158,19 @@
 
 /* ------------------------------ touch floor ------------------------------ */
 
-/* Wherever a finger is the pointer - and on any one-column layout, where it
-   probably is - every control clears the system's own minimum target
-   (--s-size-target-min, 44). The system's sm and md buttons are 36 and 40
-   for a mouse; this is the owner's touch floor (CLAUDE.md), applied as a
-   height floor only, so each control keeps its look. Desktop with a mouse
-   keeps the compact heights. */
-@media (max-width: 860px), (pointer: coarse) {
-  #bar button,
-  #dash button,
-  #dash summary,
-  #help button,
-  #alpha-ask button { min-height: var(--s-size-target-min); }
+/* The system floors its own controls at --s-size-target-min (44) on a coarse
+   pointer: every s-btn, the sm field, menu items, and an invisible 44 hit
+   area on segments (sarib components.css, "Touch targets"). What is left here
+   is only what that rule cannot reach:
+   - the wordmark button (s-appbar__brand is a layout part, not a control the
+     system floors) and the More choices disclosure row (the app's own);
+   - the bar's buttons, which below 768 fold their words away and become
+     glyph-only without being s-btn--icon, so the system's icon min-width
+     does not apply to them. */
+@media (pointer: coarse) {
+  #brand-btn,
+  #more-choices > summary { min-height: var(--s-size-target-min); }
   #bar button:not(#brand-btn) { min-width: var(--s-size-target-min); }
-  #out-name-field { min-height: var(--s-size-target-min); }
 }
 
 /* ------------------------------- help card ------------------------------- */

@@ -116,7 +116,7 @@ function reflectTheme() {
   // The glyph shows the theme actually painted: the sun or the moon.
   const dark = document.documentElement.dataset.theme === "dark";
   $("theme-icon").dataset.icon = dark ? "moon" : "sun";
-  btn.title = `Switch to ${THEME_WORD[THEME_NEXT[cur]]}`;
+  btn.dataset.sTip = `Switch to ${THEME_WORD[THEME_NEXT[cur]]}`;
   btn.setAttribute("aria-label",
     `Theme: ${THEME_WORD[cur]}. Click to switch to ${THEME_WORD[THEME_NEXT[cur]]}.`);
 }
@@ -279,6 +279,17 @@ function bindPlan() {
   $("alpha-cancel").addEventListener("click", () => settleAlpha(null));
   // Escape closes a dialog natively, and that is a cancel like any other.
   $("alpha-ask").addEventListener("cancel", (e) => { e.preventDefault(); settleAlpha(null); });
+  /* components.js closes any open dialog on Escape and on a backdrop click.
+     This one is a question that must be settled, so both are a cancel here,
+     handled on the dialog before the library's document listener sees them. */
+  $("alpha-ask").addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { e.preventDefault(); settleAlpha(null); }
+  });
+  $("alpha-ask").addEventListener("click", (e) => {
+    if (e.target !== e.currentTarget) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) settleAlpha(null);
+  });
 
   // One step back to the destination's defaults, shown only while something
   // differs from them.

@@ -117,7 +117,7 @@ export function addFiles(files) {
     // What happened, then what to do about it. "Unsupported" on its own leaves
     // someone guessing which of their files was the problem and what would work.
     toast("Those file types aren't supported. Try PNG, JPEG, WebP, AVIF, GIF, "
-      + "BMP or TIFF.");
+      + "BMP or TIFF.", null, "warning");
     return;
   }
 

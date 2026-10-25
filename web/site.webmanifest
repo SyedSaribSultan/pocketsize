@@ -2,7 +2,7 @@
   "name": "Pocketsize",
   "short_name": "Pocketsize",
   "id": "/",
-  "description": "Image and video compression that proves it didn't ruin your file. Runs entirely on your device — nothing is uploaded.",
+  "description": "Image and video compression that proves it didn't ruin your file. Runs entirely on your device. Nothing is uploaded.",
   "start_url": "/",
   "display": "standalone",
   "categories": ["photo", "video", "utilities"],

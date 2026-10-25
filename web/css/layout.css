@@ -63,7 +63,7 @@ body {
 /* What "fills the first screen" means: the viewport less the bar, measured
    from the real bar by js/main.js. Wide layout only - the narrow layout is a
    document, and its height is its content's. */
-@media (min-width: 861px) {
+@media (min-width: 768px) {
   #app { height: calc(100dvh - var(--bar-h, var(--s-appbar-h))); }
 }
 
@@ -192,7 +192,7 @@ body[data-focus="1"] #dash {
    document, and a document's height is its content's: keeping the dashboard
    height-constrained here once squashed the queue to 0px and painted its
    content over the plan. */
-@media (max-width: 860px) {
+@media (max-width: 767.98px) {
   body { overflow: auto; }
   #app { height: auto; }
 
@@ -229,7 +229,7 @@ body[data-focus="1"] #dash {
 /* On a phone the bar's words fold away to their glyphs, so the bar stays one
    64px band: still read out (clipped, not removed), and still the same
    buttons. The download keeps its size on screen and folds only its "how". */
-@media (max-width: 640px) {
+@media (max-width: 767.98px) {
   #bar .bar-word,
   #save-btn .save-what {
     position: absolute;

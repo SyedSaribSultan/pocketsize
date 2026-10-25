@@ -313,7 +313,7 @@ async function ensureDiff() {
        the panel it used to be written into is gone; a role=status announces it
        without stealing focus from the comparison. */
     diffFor = null;
-    toast("This browser could not decode both versions, so the difference cannot be drawn.");
+    toast("This browser could not decode both versions, so the difference cannot be drawn.", null, "critical");
   }
 }
 

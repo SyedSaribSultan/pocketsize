@@ -81,9 +81,9 @@ function makeRow(it) {
     '<span class="row-end">' +
     '<span class="s-row__meta now"></span>' +
     '<span class="s-row__actions row-acts">' +
-    '<button type="button" class="s-btn s-btn--ghost s-btn--sm s-btn--icon row-act retry" title="Try this one again" aria-label="Try this one again" hidden>' +
+    '<button type="button" class="s-btn s-btn--ghost s-btn--sm s-btn--icon row-act retry" data-s-tip="Try this one again" aria-label="Try this one again" hidden>' +
     '<span class="s-icon" data-icon="retry" aria-hidden="true"></span></button>' +
-    '<button type="button" class="s-btn s-btn--ghost s-btn--sm s-btn--icon row-act rm" title="Remove this one" aria-label="Remove this one">' +
+    '<button type="button" class="s-btn s-btn--ghost s-btn--sm s-btn--icon row-act rm" data-s-tip="Remove this one" aria-label="Remove this one">' +
     '<span class="s-icon" data-icon="x" aria-hidden="true"></span></button>' +
     '</span></span>';
   /* Resolved once. Everything paintRow touches is found here and never looked

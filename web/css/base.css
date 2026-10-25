@@ -25,12 +25,12 @@
   /* Over the photograph. These sit on top of an arbitrary image, not on a
      themed surface, so they deliberately do NOT move with the theme: the
      white-and-grey checkerboard is the one universal sign for transparency.
-     The square is the system's first warm neutral, written as a literal
-     because no token holds a neutral that stays put across themes - this is
-     the one colour literal the app owns. Everything else over the picture is
-     the system's on-image fill and fixed white. */
+     The square is the system's first warm neutral, read from its primitive
+     (--s-prim-neutral-20), which the theme never re-points, because no
+     semantic role holds a neutral that stays put across themes. Everything
+     else over the picture is the system's on-image fill and fixed white. */
   --c-checker-ground: var(--s-color-surface-fixed);
-  --c-checker-square: #ecebe8;
+  --c-checker-square: var(--s-prim-neutral-20);
 
   /* The caliper grip's glyph (Lucide chevrons, ISC - see vendor/LICENSES.md)
      as a mask, so its colour comes from a token rather than from the file. */
@@ -64,10 +64,4 @@ kbd {
     --s-color-border-primary: var(--s-color-border-tertiary);
     --s-color-content-tertiary: var(--s-color-content-secondary);
   }
-}
-
-/* Reduced motion: the token layer already zeroes every duration; this also
-   stills anything of the app's own. */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { transition: none !important; animation: none !important; }
 }

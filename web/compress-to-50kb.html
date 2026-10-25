@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Compress an image to 50 KB in your browser — Pocketsize</title>
-<meta name="description" content="A 50 KB budget, spent as well as it can be: several formats tried, every attempt measured, the best-looking fit kept — and an honest answer when 50 KB is not enough.">
+<title>Compress an image to 50 KB in your browser · Pocketsize</title>
+<meta name="description" content="A 50 KB budget, spent as well as it can be: several formats tried, every attempt measured, the best-looking fit kept, and an honest answer when 50 KB is not enough.">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f0e0c">
@@ -14,16 +14,16 @@
      carries the same words for everyone who cannot see it. -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Pocketsize">
-<meta property="og:title" content="Compress an image to 50 KB in your browser — Pocketsize">
-<meta property="og:description" content="A 50 KB budget, spent as well as it can be: several formats tried, every attempt measured, the best-looking fit kept — and an honest answer when 50 KB is not enough.">
+<meta property="og:title" content="Compress an image to 50 KB in your browser · Pocketsize">
+<meta property="og:description" content="A 50 KB budget, spent as well as it can be: several formats tried, every attempt measured, the best-looking fit kept, and an honest answer when 50 KB is not enough.">
 <meta property="og:url" content="https://pocketsize.syedsarib.com/compress-to-50kb">
 <meta property="og:image" content="https://pocketsize.syedsarib.com/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Pocketsize — compression that proves it didn't ruin your image. Nothing is uploaded.">
+<meta property="og:image:alt" content="Pocketsize: compression that proves it didn't ruin your image. Nothing is uploaded.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Compress an image to 50 KB in your browser — Pocketsize">
-<meta name="twitter:description" content="A 50 KB budget, spent as well as it can be: several formats tried, every attempt measured, the best-looking fit kept — and an honest answer when 50 KB is not enough.">
+<meta name="twitter:title" content="Compress an image to 50 KB in your browser · Pocketsize">
+<meta name="twitter:description" content="A 50 KB budget, spent as well as it can be: several formats tried, every attempt measured, the best-looking fit kept, and an honest answer when 50 KB is not enough.">
 <meta name="twitter:image" content="https://pocketsize.syedsarib.com/og.png">
 
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -70,11 +70,11 @@
   "url": "https://pocketsize.syedsarib.com/",
   "description": "Free, private image compression in the browser. PNG, JPEG, WebP and AVIF. Every result is measured against the original. Nothing is uploaded, and it works offline.",
   "applicationCategory": "MultimediaApplication",
-  "operatingSystem": "Any — runs in the browser",
+  "operatingSystem": "Any, runs in the browser",
   "isAccessibleForFree": true,
   "featureList": [
     "Image compression",
-    "Runs on your device — nothing is uploaded",
+    "Runs on your device: nothing is uploaded",
     "Every result measured against the original",
     "Works offline after one visit"
   ],
@@ -119,7 +119,7 @@
       "name": "Why does my 50 KB version look soft when I zoom in?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Because 50 KB can only hold so much detail. The visual-match score under the image tells you how close it stayed; if it is not close enough, allow a smaller pixel size — fewer pixels compress better than harder-squeezed ones."
+        "text": "Because 50 KB can only hold so much detail. The visual-match score under the image tells you how close it stayed; if it is not close enough, allow a smaller pixel size. Fewer pixels compress better than harder-squeezed ones."
       }
     },
     {
@@ -135,7 +135,7 @@
       "name": "Is this really running on my computer?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Yes — every byte of the work happens in your browser. The “nothing is uploaded” link above shows you how to watch the network panel and see your picture is never sent."
+        "text": "Yes. Every byte of the work happens in your browser. The “nothing is uploaded” link above shows you how to watch the network panel and see your picture is never sent."
       }
     }
   ]
@@ -479,11 +479,11 @@
         <span class="spacer"></span>
         <div class="s-toolbar">
           <div class="zoom" role="group" aria-label="Zoom">
-            <button class="s-btn s-btn--ghost s-btn--sm s-btn--icon" type="button" id="zoom-out" aria-label="Zoom out">
+            <button class="s-btn s-btn--ghost s-btn--sm s-btn--icon" type="button" id="zoom-out" aria-label="Zoom out" data-s-tip="Zoom out">
               <span class="s-icon" data-icon="minus" aria-hidden="true"></span>
             </button>
             <span class="s-toolbar__readout" id="zoom-label">Fit</span>
-            <button class="s-btn s-btn--ghost s-btn--sm s-btn--icon" type="button" id="zoom-in" aria-label="Zoom in">
+            <button class="s-btn s-btn--ghost s-btn--sm s-btn--icon" type="button" id="zoom-in" aria-label="Zoom in" data-s-tip="Zoom in">
               <span class="s-icon" data-icon="plus" aria-hidden="true"></span>
             </button>
             <!-- Not also called "Fit": the readout beside it already says "Fit"
@@ -493,7 +493,7 @@
           </div>
           <span class="s-toolbar__sep" aria-hidden="true"></span>
           <!-- The comparison, alone: F or this button hides everything else. -->
-          <button class="s-btn s-btn--ghost s-btn--sm" type="button" id="focus-btn" aria-pressed="false" title="Show only the comparison (F)">
+          <button class="s-btn s-btn--ghost s-btn--sm" type="button" id="focus-btn" aria-pressed="false" data-s-tip="Show only the comparison (F)">
             <span class="s-icon" data-icon="panel-close" aria-hidden="true"></span>
             <span class="s-btn__label">Focus</span>
           </button>
@@ -570,16 +570,16 @@
 <section id="about" aria-labelledby="about-h">
   <div class="about-inner s-prose">
     <h2 id="about-h">Compress an image to 50 KB</h2>
-    <p class="s-lede">This page opens Pocketsize with the size limit already set to 50 KB — thumbnail and icon territory. The engine tries JPEG, PNG, WebP and AVIF at several quality levels, measures each attempt against your original, and keeps the smallest file under the limit that still looks right.</p>
+    <p class="s-lede">This page opens Pocketsize with the size limit already set to 50 KB: thumbnail and icon territory. The engine tries JPEG, PNG, WebP and AVIF at several quality levels, measures each attempt against your original, and keeps the smallest file under the limit that still looks right.</p>
     <p>50 KB is a hard budget for anything but small or simple images, and this is where most tools quietly hand back mush. Pocketsize will not: every result shows its measured visual-match score, and when the only way under 50 KB would wreck the picture, it keeps the smallest version still worth having and tells you the limit was missed.</p>
     <p>Your pictures never leave your computer: the compression runs in your browser, on your own device, and <a href="/nothing-is-uploaded">you can verify that yourself in about a minute</a>. After one visit it even works with no internet at all.</p>
-    <p>This page is <a href="/">Pocketsize</a> with the plan pre-set for one job. Nothing is locked — change any control once it is open.</p>
+    <p>This page is <a href="/">Pocketsize</a> with the plan pre-set for one job. Nothing is locked: change any control once it is open.</p>
     <h2>Why does my 50 KB version look soft when I zoom in?</h2>
-    <p>Because 50 KB can only hold so much detail. The visual-match score under the image tells you how close it stayed; if it is not close enough, allow a smaller pixel size — fewer pixels compress better than harder-squeezed ones.</p>
+    <p>Because 50 KB can only hold so much detail. The visual-match score under the image tells you how close it stayed; if it is not close enough, allow a smaller pixel size. Fewer pixels compress better than harder-squeezed ones.</p>
     <h2>Which format wins at 50 KB?</h2>
     <p>It depends on the picture, which is why Pocketsize tries several and measures instead of guessing. Photos usually land on JPEG, WebP or AVIF; flat graphics often win as PNG with fewer colors.</p>
     <h2>Is this really running on my computer?</h2>
-    <p>Yes — every byte of the work happens in your browser. The “nothing is uploaded” link above shows you how to watch the network panel and see your picture is never sent.</p>
+    <p>Yes. Every byte of the work happens in your browser. The “nothing is uploaded” link above shows you how to watch the network panel and see your picture is never sent.</p>
   </div>
 </section>
 
