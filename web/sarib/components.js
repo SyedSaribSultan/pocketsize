@@ -412,9 +412,10 @@ function amountRender(st, inserted) {
   const text = input.value;
   const box = doc.createElement("span");
   box.className = "s-amount__text";
-  if (text && root.dataset.tone) {
+  // The sign shows faint beside the placeholder too (start-aligned), so its reserved room reads as the sign.
+  if (root.dataset.tone && (text || !root.classList.contains("s-amount--center"))) {
     const sign = doc.createElement("span");
-    sign.className = "s-amount__sign";
+    sign.className = text ? "s-amount__sign" : "s-amount__sign s-amount__sign--empty";
     sign.textContent = root.dataset.tone === "income" ? "+" : MINUS;
     box.append(sign);
   }
