@@ -121,7 +121,7 @@ try {
                  document.getElementById("stage-empty").hidden,
       showingOriginal: before.getAttribute("src") === state.items[0].beforeURL,
       afterSrc: document.getElementById("img-after").getAttribute("src"),
-      rows: document.querySelectorAll("#queue-list .row").length,
+      rows: document.querySelectorAll("#queue-list .s-row").length,
       // The two sides are named on the caliper itself, so "which half am I
       // looking at" is answered without a legend.
       tags: [document.getElementById("tag-l").textContent,
@@ -299,7 +299,7 @@ try {
     const t = await page.evaluate(() => ({
       elapsed: state.items.filter((i) => i.status === "done" || i.status === "saved")
         .map((i) => i.elapsedMs),
-      rowText: [...document.querySelectorAll("#queue-list .sub")].map((e) => e.textContent),
+      rowText: [...document.querySelectorAll("#queue-list .s-row__sub")].map((e) => e.textContent),
     }));
     ok(t.elapsed.length > 0 && t.elapsed.every((ms) => ms > 0),
        `every finished image recorded a duration (${t.elapsed.length} images)`);

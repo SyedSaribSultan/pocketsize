@@ -248,7 +248,7 @@ try {
      panel - the property being checked is the same one, on the control that
      now occupies that role. */
   const modeKeys = await pg.evaluate(() => {
-    const btns = [...document.querySelectorAll('#stage .segmented button')];
+    const btns = [...document.querySelectorAll('#stage .s-seg button')];
     const first = btns.find((b) => b.getAttribute("aria-pressed") !== "true");
     const was = document.getElementById("view").dataset.mode;
     first.focus();

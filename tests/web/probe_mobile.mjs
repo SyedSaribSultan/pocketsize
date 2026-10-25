@@ -66,7 +66,7 @@ try {
     }
     /* The rows are the touch targets now that the chip strip is gone: they are
        what a finger actually aims at on a phone. */
-    const rows = [...document.querySelectorAll("#queue-list .row")];
+    const rows = [...document.querySelectorAll("#queue-list .s-row")];
     return {
       pageScrollsSideways: doc.scrollWidth > doc.clientWidth,
       viewport: doc.clientWidth,

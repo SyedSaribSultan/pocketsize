@@ -41,25 +41,37 @@ export function show(el, on) {
 let toastTimer = null;
 const pending = [];
 
+/* The system's toast: a P3 card (s-toast) inside the s-toasts region, which
+ * is the live region. One shows at a time - the queue above is what keeps
+ * two messages from blurring together. */
 function showNext() {
-  const el = $("toast");
-  if (!el || toastTimer || !pending.length) return;
+  const region = $("toast");
+  if (!region || toastTimer || !pending.length) return;
   const { message, action } = pending.shift();
 
-  el.textContent = message;
+  const card = document.createElement("div");
+  card.className = "s-toast";
+  const text = document.createElement("span");
+  text.className = "s-toast__text";
+  text.textContent = message;
+  card.append(text);
   if (action) {
     const b = document.createElement("button");
     b.type = "button";
-    b.className = "btn sm";
+    b.className = "s-btn s-btn--ghost s-btn--sm";
     b.id = "toast-action";
-    b.textContent = action.label;
+    const label = document.createElement("span");
+    label.className = "s-btn__label";
+    label.textContent = action.label;
+    b.append(label);
     b.addEventListener("click", () => {
       dismiss();
       action.onAction();
     });
-    el.appendChild(b);
+    card.append(b);
   }
-  el.dataset.up = "1";
+  region.replaceChildren(card);
+  region.dataset.up = "1";
 
   // ~200ms a word, clamped: never a flash, never a squatter. An actionable
   // toast holds longer, because it is also a control.
@@ -69,11 +81,19 @@ function showNext() {
 }
 
 function dismiss() {
-  const el = $("toast");
+  const region = $("toast");
   clearTimeout(toastTimer);
   toastTimer = null;
-  if (el) delete el.dataset.up;
-  // The next message waits for the slide-out, so two reads never blur together.
+  if (region) {
+    delete region.dataset.up;
+    // The system's exit: the card fades on the exit curve, then goes.
+    const card = region.firstElementChild;
+    if (card) {
+      card.dataset.closing = "";
+      setTimeout(() => { if (card.parentNode === region && !region.dataset.up) card.remove(); }, 160);
+    }
+  }
+  // The next message waits for the exit, so two reads never blur together.
   setTimeout(showNext, 240);
 }
 

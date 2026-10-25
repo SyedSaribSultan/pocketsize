@@ -20,7 +20,7 @@
 
 "use strict";
 
-const VERSION = "v24";
+const VERSION = "v25";
 const SHELL = `pocketsize-shell-${VERSION}`;
 const HEAVY = `pocketsize-heavy-${VERSION}`;
 
@@ -29,7 +29,18 @@ const HEAVY = `pocketsize-heavy-${VERSION}`;
  * touch". */
 const PRECACHE = [
   "/",
-  "/sarib-tokens.css",
+  /* The Sarib design system, vendored under /sarib/ (hash-locked by
+     sarib-design.lock.json): tokens, components, the icon masks, and every
+     icon this page paints - a mask that never arrived offline is a blank
+     square where a glyph should be. tests/test_design_system.py holds this
+     list to the icons the page and its modules actually name. */
+  "/sarib/tokens.css", "/sarib/components.css", "/sarib/icons.css",
+  "/sarib/icons/check.svg", "/sarib/icons/chevron-down.svg", "/sarib/icons/chevron-right.svg",
+  "/sarib/icons/copy.svg", "/sarib/icons/download.svg", "/sarib/icons/image.svg",
+  "/sarib/icons/loader-circle.svg", "/sarib/icons/minus.svg", "/sarib/icons/moon.svg",
+  "/sarib/icons/panel-close.svg", "/sarib/icons/plus.svg", "/sarib/icons/refresh-cw.svg",
+  "/sarib/icons/retry.svg", "/sarib/icons/sun.svg", "/sarib/icons/trash-2.svg",
+  "/sarib/icons/upload.svg", "/sarib/icons/x.svg",
   "/fonts.css",
   "/css/base.css", "/css/layout.css", "/css/controls.css",
   "/css/queue.css", "/css/compare.css",

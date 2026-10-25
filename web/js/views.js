@@ -59,7 +59,7 @@ function originalView(it) {
     fmt: ORIGINAL_PICK, ext: null, blob: it.file,
     newBytes: it.originalBytes,
     level: null, score: null, lossless: true,
-    note: "Kept exactly as it arrived — not compressed.", passthrough: true,
+    note: "Kept exactly as it arrived, not compressed.", passthrough: true,
   };
 }
 
@@ -118,7 +118,7 @@ export function chooseCandidate(format) {
      it and let the stage rebuild it on demand rather than showing a heatmap of
      an encode nobody is looking at any more. */
   it.diffURL = null;
-  return format === ORIGINAL_PICK ? "Keeping your original — nothing compressed"
+  return format === ORIGINAL_PICK ? "Keeping your original: nothing compressed"
     : view === it.auto ? "Back to the smallest one that passed"
     : `Keeping ${fmtLabel(format)} for this image`;
 }

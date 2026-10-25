@@ -1,0 +1,8 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="x">
+<!-- Optical compensation: pure 45-degree diagonals antialias lighter than
+     curves at equal stroke, so +20% equalizes perceived weight with the
+     bar's other 1px glyphs. Geometry is otherwise the kit export. -->
+<path id="Vector" d="M13.5 4.5L4.5 13.5M4.5 4.5L13.5 13.5" stroke="#0F0E0C" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+</svg>

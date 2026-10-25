@@ -93,7 +93,7 @@ async function measure(pg) {
     const clipped = [];
     if (vis(side)) {
       const sr = side.getBoundingClientRect();
-      for (const child of side.querySelectorAll("p, label, .field, .pair, button, select, input, #cli-note, h2, .muted, summary")) {
+      for (const child of side.querySelectorAll("p, label, .plan-item, .pair, button, select, input, #cli-note, h2, .s-meta, summary")) {
         if (!vis(child)) continue;
         const cr = child.getBoundingClientRect();
         if (cr.right > sr.right + 1.5) {
@@ -133,7 +133,13 @@ async function measure(pg) {
     const small = [];
     for (let c of document.querySelectorAll("button, select, input:not([hidden]), summary, a")) {
       if (!vis(c)) continue;
+      /* Not targets: a select kept only as the model behind a drawn listbox
+         (aria-hidden, 1px), and the skip link until it is focused. */
+      if (c.closest('[aria-hidden="true"]') || c.matches(".s-skip:not(:focus)")) continue;
       if (c.matches('input[type="checkbox"]') && c.closest("label")) c = c.closest("label");
+      // A text input inside the system's field shell is measured as the shell,
+      // which is the box a finger aims at.
+      if (c.matches(".s-field__input")) c = c.closest(".s-field");
       const r = c.getBoundingClientRect();
       if (r.height < 43.5) small.push(`${c.id || c.textContent.trim().slice(0, 18)} ${Math.round(r.height)}px`);
     }

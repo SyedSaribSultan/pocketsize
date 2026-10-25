@@ -98,8 +98,8 @@ export async function copyImage(it) {
        is designed around. */
     await navigator.clipboard.write([new ClipboardItem({ "image/png": asPng() })]);
     toast(it.afterBlob.type === "image/png"
-      ? "Copied — paste it anywhere"
-      : "Copied as PNG — the only image format clipboards take");
+      ? "Copied. Paste it anywhere"
+      : "Copied as PNG, the only image format clipboards take");
   } catch (e) {
     toast(`Could not copy: ${e && e.message ? e.message : e}`);
   } finally {
@@ -297,7 +297,7 @@ export async function downloadAll() {
        trust. */
     const shrunk = done.filter(
       (it) => it.outW && (it.outW !== it.width || it.outH !== it.height)).length;
-    toast(`Zipped ${done.length} pictures — saved you ${human(totals().saved)}.`
+    toast(`Zipped ${done.length} pictures and saved you ${human(totals().saved)}.`
       + (shrunk ? ` ${shrunk} of them ${shrunk === 1 ? "was" : "were"} shrunk in pixels, `
         + "not just compressed." : "")
       + " A written report of everything is inside.");
@@ -307,7 +307,7 @@ export async function downloadAll() {
     setTimeout(() => setText($("save-label"), "Saved ✓"), 80);
     setTimeout(() => scheduleRender(), 2200);
   } catch {
-    toast("Could not build the zip — try downloading them one at a time");
+    toast("Could not build the zip. Try downloading them one at a time");
   }
   scheduleRender();
 }

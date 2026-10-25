@@ -78,12 +78,22 @@ function readOptions(sel) {
 }
 
 function build(sel) {
-  const root = document.createElement("div");
-  root.className = "picker";
+  /* The system's listbox: the trigger is an s-field__trigger inside the same
+     md field shell the native select sat in, and the list is an s-menu with
+     a trailing check on the current option. The shell stays where it was in
+     the layout, so nothing around the control moves when it is enhanced. */
+  let root = sel.closest(".s-field");
+  if (!root) {
+    root = document.createElement("div");
+    root.className = "s-field";
+    sel.after(root);
+  }
+  root.classList.remove("s-field--select");
+  root.classList.add("picker");
 
   const button = document.createElement("button");
   button.type = "button";
-  button.className = "picker-btn";
+  button.className = "s-field__trigger";
   button.id = `${sel.id}-btn`;
   button.setAttribute("aria-haspopup", "listbox");
   button.setAttribute("aria-expanded", "false");
@@ -93,7 +103,7 @@ function build(sel) {
   button.append(value);
 
   const list = document.createElement("div");
-  list.className = "picker-list";
+  list.className = "s-menu picker-list";
   list.id = `${sel.id}-list`;
   list.setAttribute("role", "listbox");
   list.hidden = true;
@@ -110,8 +120,11 @@ function build(sel) {
     label.addEventListener("click", (e) => { e.preventDefault(); button.focus(); });
   }
 
-  root.append(button, list);
-  sel.after(root);
+  /* The trigger takes the select's place in the shell, ahead of the chevron;
+     the list hangs off the shell, fixed to the viewport while open. */
+  if (sel.parentElement === root) sel.after(button);
+  else root.prepend(button);
+  root.append(list);
 
   const ctl = { root, button, list, value, sel, options: [], active: -1, typed: "", typedAt: 0 };
 
@@ -143,8 +156,12 @@ function build(sel) {
       let item = rows[i];
       if (!item) {
         item = document.createElement("div");
-        item.className = "picker-opt";
+        item.className = "s-menu__item";
         item.setAttribute("role", "option");
+        /* The words, then the system's trailing check, which only the current
+           option shows: selection is a mark, never a fill or a weight. */
+        item.innerHTML = '<span class="s-menu__text picker-text"></span>' +
+          '<span class="s-icon s-menu__check" data-icon="check" aria-hidden="true"></span>';
         list.append(item);
       }
       const id = `${sel.id}-opt-${i}`;
@@ -158,7 +175,8 @@ function build(sel) {
       if (item.dataset.value !== o.value) item.dataset.value = o.value;
       const title = o.title || "";
       if (item.title !== title) item.title = title;
-      if (item.textContent !== o.label) item.textContent = o.label;
+      const text = item.firstElementChild;
+      if (text.textContent !== o.label) text.textContent = o.label;
     });
     for (let i = list.children.length - 1; i >= ctl.options.length; i--) {
       list.children[i].remove();
@@ -177,7 +195,7 @@ function build(sel) {
     const items = [...list.children];
     if (!items.length) return;
     ctl.active = Math.max(0, Math.min(items.length - 1, i));
-    items.forEach((el, n) => el.classList.toggle("is-active", n === ctl.active));
+    items.forEach((el, n) => el.toggleAttribute("data-active", n === ctl.active));
     const el = items[ctl.active];
     button.setAttribute("aria-activedescendant", el.id);
     /* nearest, not center: a list that jumps the active option to the middle on
@@ -218,6 +236,7 @@ function build(sel) {
     const above = r.top - GAP;
     const up = below < Math.min(list.scrollHeight, 320) && above > below;
     root.dataset.drop = up ? "up" : "down";
+    list.dataset.side = up ? "top" : "bottom";
     list.style.setProperty("--picker-max", `${Math.max(96, up ? above : below)}px`);
     /* And how far right it may run before the window edge. The sidebar clips
        its own overflow, so the list is positioned to escape it: fixed to the
@@ -340,14 +359,14 @@ function build(sel) {
      the outside-close handler before the click landed. */
   list.addEventListener("mousedown", (e) => e.preventDefault());
   list.addEventListener("mouseover", (e) => {
-    const item = e.target.closest(".picker-opt");
+    const item = e.target.closest(".s-menu__item");
     /* An option the engine would refuse takes the highlight like any other -
        it is readable, and its own label says why it cannot be picked. Skipping
        it would make the cursor appear to stick. */
     if (item) setActive([...list.children].indexOf(item));
   });
   list.addEventListener("click", (e) => {
-    const item = e.target.closest(".picker-opt");
+    const item = e.target.closest(".s-menu__item");
     if (item) ctl.commit([...list.children].indexOf(item));
   });
 

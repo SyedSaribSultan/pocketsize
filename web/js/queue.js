@@ -49,6 +49,9 @@ function subLine(it) {
       return {
         text: `${human(it.originalBytes)} → ${fmtLabel(it.fmt)} · ${saved}${shrunk}${kept}`,
         tone: pct > 0 ? "good" : "",
+        /* Only the delta carries the status colour; the whole line never
+           turns green. */
+        delta: pct > 0 ? saved : "",
       };
     }
   }
@@ -57,38 +60,67 @@ function subLine(it) {
 /* A row is a <div role="option">, not a <button>: it carries its own hover
  * actions (remove, retry), and a button inside a button is invalid HTML the
  * parser dismantles. The list container owns focus and the arrow keys, which
- * is the listbox pattern's one-tab-stop shape anyway. */
+ * is the listbox pattern's one-tab-stop shape anyway.
+ *
+ * It is the system's large list row (s-row s-row--lg): a 40px thumbnail, the
+ * name over what happened to it, then the weight now - with the row's own
+ * actions (ghost icon buttons) taking that place while the row has the
+ * pointer or focus. */
 function makeRow(it) {
   const el = document.createElement("div");
-  el.className = "row";
+  el.className = "s-row s-row--lg s-row--interactive";
   el.dataset.id = it.id;
   el.setAttribute("role", "option");
   el.innerHTML =
-    '<img class="thumb" alt="" decoding="async">' +
-    '<span class="name"><span class="name-head"></span><span class="name-tail"></span>' +
+    '<img class="s-row__thumb s-skeleton" alt="" decoding="async">' +
+    '<span class="s-row__text">' +
+    '<span class="s-row__title name"><span class="name-head"></span><span class="name-tail"></span></span>' +
+    '<span class="s-row__sub"></span>' +
+    '<span class="s-progress__track row-track" hidden><span class="s-progress__bar"></span></span>' +
     '</span>' +
-    '<span class="now num"></span>' +
-    '<span class="sub"></span>' +
-    '<span class="row-acts">' +
-    '<button type="button" class="row-act retry" title="Try this one again" aria-label="Try this one again" hidden>' +
-    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg></button>' +
-    '<button type="button" class="row-act rm" title="Remove this one" aria-label="Remove this one">' +
-    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>' +
-    '</span>' +
-    '<span class="track" hidden><i></i></span>';
+    '<span class="row-end">' +
+    '<span class="s-row__meta now"></span>' +
+    '<span class="s-row__actions row-acts">' +
+    '<button type="button" class="s-btn s-btn--ghost s-btn--sm s-btn--icon row-act retry" title="Try this one again" aria-label="Try this one again" hidden>' +
+    '<span class="s-icon" data-icon="retry" aria-hidden="true"></span></button>' +
+    '<button type="button" class="s-btn s-btn--ghost s-btn--sm s-btn--icon row-act rm" title="Remove this one" aria-label="Remove this one">' +
+    '<span class="s-icon" data-icon="x" aria-hidden="true"></span></button>' +
+    '</span></span>';
   /* Resolved once. Everything paintRow touches is found here and never looked
      up again for the life of the row. */
   return {
     el,
-    thumb: el.querySelector(".thumb"),
+    thumb: el.querySelector(".s-row__thumb"),
     head: el.querySelector(".name-head"),
     tail: el.querySelector(".name-tail"),
     retry: el.querySelector(".retry"),
     now: el.querySelector(".now"),
-    sub: el.querySelector(".sub"),
-    track: el.querySelector(".track"),
-    bar: el.querySelector(".track > i"),
+    sub: el.querySelector(".s-row__sub"),
+    track: el.querySelector(".row-track"),
+    bar: el.querySelector(".row-track > .s-progress__bar"),
+    subKey: "",
   };
+}
+
+/* The second line, written only when it changed. A saving is said in the
+   line's own colour with the delta alone in the success colour; a failure is
+   the whole line in the critical colour, because the whole line is the
+   failure. */
+function paintSub(row, { text, tone, delta }) {
+  const key = `${tone}|${text}`;
+  if (row.subKey === key) return;
+  row.subKey = key;
+  const cls = tone === "bad" ? "s-row__sub s-delta-bad" : "s-row__sub";
+  if (row.sub.className !== cls) row.sub.className = cls;
+  const at = delta ? text.indexOf(delta) : -1;
+  if (tone === "good" && at >= 0) {
+    const d = document.createElement("span");
+    d.className = "s-delta-good";
+    d.textContent = delta;
+    row.sub.replaceChildren(text.slice(0, at), d, text.slice(at + delta.length));
+  } else {
+    row.sub.textContent = text;
+  }
 }
 
 /* End-ellipsis hides exactly the part of an export name that distinguishes it
@@ -105,6 +137,8 @@ function paintRow(row, it) {
   const el = row.el;
   if (it.thumbURL && row.thumb.getAttribute("src") !== it.thumbURL) {
     row.thumb.src = it.thumbURL;
+    // Decoded: the skeleton's pulse has said "coming" for long enough.
+    row.thumb.classList.remove("s-skeleton");
   }
   paintName(row, it.name);
   if (el.title !== it.name) el.title = it.name;
@@ -112,16 +146,15 @@ function paintRow(row, it) {
   show(row.retry, it.status === "failed");
   setText(row.now, isReady(it) ? human(it.newBytes) : "");
 
-  const { text, tone } = subLine(it);
-  setText(row.sub, text);
-  const subClass = `sub${tone ? ` ${tone}` : ""}`;
-  if (row.sub.className !== subClass) row.sub.className = subClass;
+  const sub = subLine(it);
+  const { text } = sub;
+  paintSub(row, sub);
 
   /* Progress is only drawn while there is progress to draw. A track sitting at
      zero on a finished row reads as a job that never started. */
   const busy = it.status === "working";
   show(row.track, busy);
-  if (busy) row.bar.style.transform = `scaleX(${it.frac || 0})`;
+  if (busy) row.bar.style.setProperty("--s-value", `${((it.frac || 0) * 100).toFixed(1)}%`);
 
   /* Status and chosen format as data attributes as well as words. Anything that
      needs to know what state a row is in - a stylesheet, the browser harness -
@@ -194,7 +227,7 @@ export function renderQueue() {
 function renderBatch() {
   const n = state.items.length;
   if (!n) {
-    $("batch-bar").style.transform = "scaleX(0)";
+    $("batch-bar").style.setProperty("--s-value", "0%");
     $("batch").setAttribute("aria-valuenow", "0");
     return;
   }
@@ -204,7 +237,7 @@ function renderBatch() {
     else if (it.status === "working") done += it.frac || 0;
   }
   const frac = done / n;
-  $("batch-bar").style.transform = `scaleX(${frac})`;
+  $("batch-bar").style.setProperty("--s-value", `${(frac * 100).toFixed(1)}%`);
   $("batch").setAttribute("aria-valuenow", String(Math.round(frac * 100)));
   // A finished run has nothing left to report, so the line goes away rather than
   // sitting full across the page as a permanent 100%.
@@ -244,7 +277,20 @@ function renderFoot() {
      is a file; several are a zip. The size rides along in both shapes, which
      also keeps this label from reading as a twin of the stage's own plain
      "Download" when there is one picture. */
-  setText($("save-label"), ready > 1
-    ? `Download ${ready} as zip · ${human(t.after)}`
-    : `Download · ${human(t.after)}`);
+  /* Two parts, one sentence: on a phone the "how" folds away (still read
+     out) and the size stays on the button, so nobody commits to a download
+     without seeing what it costs. */
+  paintSaveLabel(ready > 1 ? `Download ${ready} as zip · ` : "Download · ", human(t.after));
+}
+
+/* The bar's download label: "Download 2 as zip · " then the size, as two
+   spans so the narrow layout can fold the first. Rebuilt only when the words
+   change. */
+function paintSaveLabel(what, size) {
+  const el = $("save-label");
+  if (el.textContent === what + size) return;
+  const w = document.createElement("span");
+  w.className = "save-what";
+  w.textContent = what;
+  el.replaceChildren(w, size);
 }

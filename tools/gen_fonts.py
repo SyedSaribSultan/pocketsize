@@ -5,15 +5,14 @@
     python tools/gen_fonts.py --check
 
 The app names exactly two families - one for everything the interface says, one
-for its figures - and every sheet consumes those through `--font-ui` and
-`--font-num` in web/css/base.css. So changing the face is a one-line CSS edit,
-and this script is everything ELSE that one line implies:
+for its figures. Since the Sarib design system was vendored whole (web/sarib/),
+the sheets read them from its token layer (--s-font-family-body / -code), which
+names these same two; this script is everything ELSE a face implies:
 
     * fetch the family from Google Fonts and subset it (latin, latin-ext)
     * write the @font-face blocks in web/fonts.css
     * repoint the <link rel=preload> in web/index.html
     * repoint the precache list in web/sw.js and bump its VERSION
-    * set --font-ui / --font-num in web/css/base.css
     * delete the woff2 files nothing references any more
     * name every woff2 after its own bytes (`<face>-<subset>.<hash>.woff2`)
 
@@ -488,7 +487,10 @@ def planned(display: str, mono: str, kind: str, scale: float, sizes,
         (WEB / "fonts.css", fonts_css(display, mono, sizes)),
         (WEB / "index.html", rewrite_index(display, mono)),
         (WEB / "sw.js", rewrite_sw(display, mono, bump_version)),
-        (WEB / "css" / "base.css", rewrite_base(display, mono, kind, scale)),
+        # base.css no longer names a face: the interface reads its families
+        # from the vendored Sarib token layer (--s-font-family-body / -code),
+        # which names exactly these two. rewrite_base is kept for a face swap
+        # that ever needs to override the system's own.
     ]
 
 

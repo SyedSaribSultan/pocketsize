@@ -6,6 +6,22 @@ This project follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Changed
+- **Rebuilt on the Sarib design system's own components, with depth.** The
+  whole system is now vendored verbatim under `web/sarib/` (tokens,
+  components, icons; hash-locked in `sarib-design.lock.json`, checked by
+  `tools/sarib-check.mjs`), replacing the pruned token sheet, its generator
+  and the app's private alias layer. The page is drawn in the system's
+  planes: a 64px app bar on the P0 band; the dashboard on the P1 canvas; the
+  files, the plan and the stage as P2 hairline cards; the photograph in a
+  16px well; mode, zoom and result controls floating over it as P3
+  toolbars. Every control is a canonical component: the dropzone, large
+  list rows (only the saving's delta is green), md fields and selects with
+  labels above them, the listbox, a switch for "Add -min", the segmented
+  control, toasts, the help and transparency dialogs, the whole-window drop
+  pill. Copy in the interface drops its em dashes. The proof page puts each
+  check in its own card; the 404 offers its two ways onward as link cards.
+  Service worker cache v25 precaches the system's sheets and icons.
+  Behaviour, data flow, analytics and the CSP are unchanged.
 - **Restyled in the Sarib design system (syedsarib.com); HeyOz tokens
   retired.** `vendor/sarib-tokens.css` is a verbatim copy of
   `sarib-design/tokens.css`; `tools/gen_tokens_subset.py` now prunes it to

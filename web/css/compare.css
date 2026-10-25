@@ -1,17 +1,27 @@
 /* The stage: the original and the result, on top of each other.
  *
- * The comparison is the product, so it gets the largest region and the fewest
- * ornaments. Two bars float over it and nothing else does - mode and zoom above,
- * identity and output below.
+ * The stage is the system's media card (s-card s-card--media: hairline, r20,
+ * p12) and #well is its image well, r16 by the concentric rule, on the
+ * system's secondary surface variant. The photograph lives in the well; the controls
+ * float over it as P3 toolbars (s-toolbar), the only shadows on the screen.
  *
  * Both images sit inside one #frame at the original's natural pixel size, and
  * the frame is what zooms and pans. That is the reason they cannot drift apart:
- * a single transform moves both, so any pixel of the result is over the pixel of
- * the original it replaced at every zoom level. The split is applied as a clip
- * on the top layer, in the frame's own coordinates, which JS recomputes from the
- * divider's position on screen - so the caliper cuts where it appears to cut
- * however far the image has been pushed around.
+ * a single transform moves both. The split is a clip on the top layer, in the
+ * frame's own coordinates, which JS recomputes from the divider's position on
+ * screen - so the caliper cuts where it appears to cut at any zoom.
  */
+
+#well {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: var(--s-radius-8);
+  /* A step off the canvas, and a step short of the muted fill, so the
+     secondary button in the empty state still reads as a button. */
+  background: var(--s-color-surface-secondary-variant);
+}
 
 #view {
   position: absolute;
@@ -22,15 +32,10 @@
 }
 #view[data-panning="1"] { cursor: grabbing; }
 
-/* Sized in JS to the original's natural pixel dimensions, which is almost always
-   larger than the region it sits in.
- *
- * Centring is done by the transform, not by the layout. This was a grid with
- * `place-items: center` first, and it does not work: an item bigger than its grid
- * area is clamped to the start edge rather than overflowing evenly, so a 1400px
- * frame in a 1080px region sat hard against the left and hung off the bottom.
- * `left/top: 50%` plus `translate(-50%, -50%)` centres on the element's own box
- * and cannot be clamped, at any zoom. */
+/* Sized in JS to the original's natural pixel dimensions. Centring is done by
+   the transform, not by the layout: an item bigger than its grid area is
+   clamped to the start edge, so `left/top: 50%` plus `translate(-50%, -50%)`
+   centres on the element's own box and cannot be clamped, at any zoom. */
 #frame {
   position: absolute;
   left: 50%;
@@ -41,16 +46,13 @@
   background-image:
     linear-gradient(45deg, var(--c-checker-square) 25%, transparent 25%, transparent 75%, var(--c-checker-square) 75%),
     linear-gradient(45deg, var(--c-checker-square) 25%, transparent 25%, transparent 75%, var(--c-checker-square) 75%);
-  background-size: 16px 16px;
-  background-position: 0 0, 8px 8px;
+  background-size: var(--s-spacing-5) var(--s-spacing-5);
+  background-position: 0 0, var(--s-spacing-3) var(--s-spacing-3);
 }
 
-/* Every layer fills the frame. The result is stretched to the original's box on
-   purpose: resizing is part of the plan, and what is being compared is how the
-   two look at the size they will be seen at, not their pixel grids.
-   Video is two more layers in the same two positions - one frame, one
-   transform - so the split, the divider and the zoom work on a clip exactly as
-   they work on a picture, with nothing about them knowing which it is. */
+/* Every layer fills the frame. The result is stretched to the original's box
+   on purpose: what is being compared is how the two look at the size they
+   will be seen at, not their pixel grids. */
 #frame > img,
 #frame > .after,
 #frame > canvas {
@@ -58,11 +60,9 @@
   inset: 0;
   width: 100%;
   height: 100%;
+  max-width: none;
   display: block;
 }
-#frame > .after > img,
-/* [hidden] wins over these anyway - see base.css - but a layer with no source
-   must never be a black rectangle sitting over the one that has one. */
 
 /* Pixels stay pixels past 1:1. Inspecting compression artefacts through a
    smoothing filter would be inspecting the filter. */
@@ -71,8 +71,8 @@
 
 .after { clip-path: inset(0 0 0 var(--clip, 50%)); }
 
-/* Mode is carried on the view, so switching it is one attribute rather than a
-   set of hidden flags that could disagree with each other. */
+/* Mode is carried on the view, so switching it is one attribute rather than
+   a set of hidden flags that could disagree with each other. */
 #view[data-mode="after"] .after { clip-path: none; }
 #view[data-mode="diff"] .after { display: none; }
 #view:not([data-mode="diff"]) #img-diff { display: none; }
@@ -80,68 +80,67 @@
 
 /* ------------------------------ the caliper ------------------------------ */
 
-/* Full height of the viewport, not of the image: it is a measuring edge on the
-   screen, and the two labels ride it so the reading is attached to the thing
-   being read rather than parked in a corner. */
-/* top/left/height are written by js/compare.js from the picture's own live
-   rectangle - the caliper belongs to the image, not to the stage, so it never
-   runs above, below or past the edges of what it is measuring. The values here
-   are the pre-first-paint state only. */
+/* A measuring edge in fixed white over the picture, with the system's
+   on-image fill as its shadow so it holds on a white photo too. top, left and
+   height are written by js/compare.js from the picture's own rectangle. */
 #divider {
   position: absolute;
   top: 0;
   left: 50%;
   height: 100%;
-  width: 1px;
-  background: var(--c-over-line);
-  box-shadow: 0 0 0 1px var(--c-over-shadow);
+  width: var(--s-stroke-width-2);
+  background: var(--s-color-fill-fixed);
+  box-shadow: 0 0 0 var(--s-stroke-width-2) var(--s-color-fill-on-image);
   pointer-events: none;
 }
-#divider > .tag {
+/* The two labels ride the line: the system's on-image pill (black 40%, fixed
+   white text), in the Code face because they name what is measured. No glass:
+   the system draws nothing translucent-and-blurred. */
+#divider > .tag,
+#mode-badge {
   position: absolute;
-  top: var(--s-3);
-  padding: 2px var(--s-3);
-  border-radius: var(--radius-pill);
-  background: var(--c-over-glass);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  color: var(--c-over-ink);
-  font-family: var(--font-num);
-  font-size: 14px;
-  font-weight: var(--w-regular);
-  letter-spacing: 0;
+  padding: var(--s-spacing-1) var(--s-spacing-4);
+  border-radius: var(--s-radius-full);
+  background: var(--s-color-fill-on-image);
+  color: var(--s-color-content-fixed-inverse);
+  font: var(--s-type-code-body-sm);
   white-space: nowrap;
 }
-#divider > .tag.l { right: var(--s-2); }
-#divider > .tag.r { left: var(--s-2); }
+#divider > .tag { top: var(--s-spacing-4); }
+#divider > .tag.l { right: var(--s-spacing-3); }
+#divider > .tag.r { left: var(--s-spacing-3); }
 
 /* The caliper's grip: the one place the page must LOOK draggable, because
-   dragging it is the product. A white disc with outward chevrons, riding the
-   line's midpoint; hit-testing still belongs to the invisible range slider. */
+   dragging it is the product. A raised white disc (fixed, so it reads on any
+   picture in either theme) with the outward chevrons masked onto it; hit-
+   testing still belongs to the invisible range below. */
+#divider::before,
 #divider::after {
   content: "";
   position: absolute;
   top: 50%;
   left: 50%;
   translate: -50% -50%;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-pill);
-  background:
-    var(--icon-grip) center / 16px no-repeat,
-    var(--c-over-grip);
-  box-shadow: 0 1px 4px var(--c-over-shadow);
+  border-radius: var(--s-radius-full);
+}
+#divider::before {
+  width: var(--s-control-h-sm);
+  height: var(--s-control-h-sm);
+  background: var(--s-color-surface-fixed);
+  box-shadow: var(--s-elevation-md);
+}
+#divider::after {
+  width: var(--s-glyph-18);
+  height: var(--s-glyph-18);
+  background: var(--s-color-content-fixed);
+  -webkit-mask: var(--icon-grip) center / contain no-repeat;
+  mask: var(--icon-grip) center / contain no-repeat;
 }
 
 /* The real control over the split: a native range, invisible but present, so
    the divider is draggable with a mouse and arrow-steppable with a keyboard
-   without any of that being reimplemented here.
-
-   It is laid over the PICTURE, not the stage: --split-x/y/w/h are the image's
-   own live rectangle, written by js/compare.js. A grab that lands on empty
-   stage should do nothing, and 0% and 100% should be the picture's two edges -
-   both of which are the same fact, that the control is the width of the thing
-   it controls. */
+   without any of that being reimplemented. Laid over the PICTURE, not the
+   stage: --split-x/y/w/h are the image's own live rectangle. */
 #split {
   position: absolute;
   left: var(--split-x, 0px);
@@ -157,15 +156,14 @@
 }
 #split::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 40px;
+  width: var(--s-spacing-11);
   height: 100%;
   cursor: ew-resize;
 }
 #split::-moz-range-thumb {
-  width: 40px;
+  width: var(--s-spacing-11);
   height: 100%;
   border: 0;
-  border-radius: 0;
   background: transparent;
   cursor: ew-resize;
 }
@@ -176,127 +174,83 @@
 
 /* ------------------------------ floating bars ---------------------------- */
 
-/* Wraps on a narrow screen. The bottom bar carries the name, the extension, two
-   figures and two buttons; on a phone that is more than one row's worth, and
-   squeezing it onto one row is what cut the filename down to four legible
-   characters. */
+/* Two rows of P3 toolbars, over the top and bottom of the well. Each row
+   wraps on a narrow screen, toolbar by toolbar, so a pill never folds onto
+   two lines. */
 .stage-bar {
   position: absolute;
-  left: var(--s-3);
-  right: var(--s-3);
+  left: var(--s-spacing-4);
+  right: var(--s-spacing-4);
+  z-index: var(--s-layer-base);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--s-2);
-  padding: var(--s-2);
-  border: 1px solid var(--c-line);
-  border-radius: var(--radius-lg);
-  /* Floating glass over the photograph: mostly the page ground, with the
-     picture faintly alive behind it. It floats, so it is one of the few
-     things the system lets cast a shadow. */
-  background: color-mix(in srgb, var(--c-bg) 88%, transparent);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow: var(--elev-2);
-  z-index: 2;
+  gap: var(--s-spacing-3);
+  pointer-events: none;
 }
-.stage-bar.top { top: var(--s-3); }
-.stage-bar.bottom { bottom: var(--s-3); }
+.stage-bar > * { pointer-events: auto; }
+.stage-bar.top { top: var(--s-spacing-4); }
+.stage-bar.bottom { bottom: var(--s-spacing-4); justify-content: flex-end; }
 
-/* The name is editable in place: renaming is an edit, not a fact about the
-   result, so it looks like text until it is being typed in. */
-/* Wide enough that a real filename is still a filename. 20ch left a 60-character
-   screenshot name showing 19 legible characters, which is not enough to tell two
-   exports of the same screen apart - the one thing the name is for. */
-#out-name {
-  flex: 1 1 30ch;
-  min-width: 12ch;
-  max-width: 44ch;
-  border-color: transparent;
-  background: transparent;
-}
-/* Editable, and it says so before it is touched: the pencil appears with the
-   border, together making "this is a field" perceivable. */
-#out-name:hover:not(:focus) {
-  border-color: var(--c-line);
-  background-image: var(--icon-pencil);
-  background-repeat: no-repeat;
-  background-position: right var(--s-2) center;
-  background-size: 13px;
+.zoom { display: contents; }
+
+/* A mode that does not apply stays focusable, so its reason stays reachable
+   (the title on hover, the toast on activation) - so it is aria-disabled,
+   not disabled, and wears the system's disabled segment colour. */
+#modes > [aria-disabled="true"] {
+  color: var(--s-color-content-primary-disabled);
+  cursor: not-allowed;
 }
 
-.stage-bar .size { font-size: calc(17px * var(--type-scale)); color: var(--c-ink-2); }
-.stage-bar .saved { font-size: calc(17px * var(--type-scale)); color: var(--c-good); }
-
-.zoom { display: inline-flex; align-items: center; gap: var(--s-1); }
-.zoom > .z { min-width: 5ch; text-align: center; font-size: calc(16px * var(--type-scale)); color: var(--c-ink-2); }
-
-/* A real range, kept native - the accent is the app's own, and nothing here
-   repaints a control it does not fully own. */
-.scrub {
-  flex: 1 1 140px;
-  min-width: 80px;
-  max-width: 260px;
-  accent-color: var(--c-accent);
-  cursor: pointer;
+/* The result row: the output's name, its weight and what that saved. The
+   name field takes the room; a real filename stays a filename. */
+.stage-file {
+  flex: 1 1 260px;
+  min-width: 0;
+  max-width: 560px;
+}
+.stage-figures { min-width: 0; max-width: 100%; margin-right: auto; }
+#out-name-field { flex: 1 1 auto; min-width: 12ch; }
+.stage-saved {
+  min-width: 0;
+  padding-right: var(--s-spacing-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: var(--s-type-code-body-sm);
+  color: var(--s-color-content-secondary);
 }
 
 /* ------------------------------ stage empty ------------------------------ */
 
-/* What is true when there is nothing to compare, said plainly. Some files this
-   browser cannot decode at all, and this is also where that is said - the
-   honest substitute for a preview is a sentence, not a broken-image glyph. */
-#stage-hero {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--s-4);
-  padding: var(--s-5);
-  text-align: center;
-  color: var(--c-ink-2);
-}
-#stage-hero > * { max-width: min(52ch, 100%); }
-#stage-hero > p { font-size: calc(18px * var(--type-scale)); }
+/* What is true when there is nothing to compare, said plainly: the system's
+   screen-level empty state, centred in the well. Some files this browser
+   cannot decode at all, and this is also where that is said. */
+#stage-hero { position: absolute; inset: 0; }
+#stage-hero > p { max-width: 52ch; }
 
-/* Which image is showing, when the caliper is not on screen to say it. */
+/* Which image is showing, when the caliper is not on screen to say it. Below
+   the top toolbars, centred. */
 #mode-badge {
-  position: absolute;
-  top: 72px;
+  top: calc(var(--s-spacing-4) + var(--s-size-target-min) + var(--s-spacing-4));
   left: 50%;
   transform: translateX(-50%);
-  padding: 2px var(--s-3);
-  border-radius: var(--radius-pill);
-  background: var(--c-over-glass);
-  color: var(--c-over-ink);
-  font-family: var(--font-num);
-  font-size: 14px;
-  white-space: nowrap;
-  z-index: 2;
+  z-index: var(--s-layer-base);
   pointer-events: none;
 }
 
 /* ------------------------------- progress -------------------------------- */
 
-/* While an image is being measured, the stage shows the untouched original and
-   this line over it. Never a bare spinner: it names the format being tried, so
-   the wait is legible rather than merely long. */
+/* While an image is being measured, the stage shows the untouched original
+   and this over it: a P3 toolbar naming the format being tried, never a bare
+   spinner. Above the bottom toolbars, centred. */
 #stage-work {
   position: absolute;
   left: 50%;
-  bottom: 72px;
+  bottom: calc(var(--s-spacing-4) + var(--s-size-target-min) + var(--s-spacing-4));
   transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  padding: var(--s-2) var(--s-4);
-  border-radius: var(--radius-pill);
-  background: var(--c-over-glass-strong);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  color: var(--c-over-ink);
-  font-size: calc(17px * var(--type-scale));
-  z-index: 2;
+  z-index: var(--s-layer-base);
+  max-width: calc(100% - var(--s-spacing-7));
+  padding-left: var(--s-spacing-5);
 }
+#work-say { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

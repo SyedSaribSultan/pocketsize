@@ -61,7 +61,7 @@ export function renderFormatOptions() {
 
   const auto = document.createElement("option");
   auto.value = "";
-  auto.dataset.label = "automatic — keep whichever comes out best";
+  auto.dataset.label = "automatic: keep whichever comes out best";
   auto.textContent = auto.dataset.label;
   /* The rule, said once: the engine writes the file every allowed way and
      keeps whichever came out best. */
@@ -133,7 +133,7 @@ export function reflectFormatAvailability() {
   if (missing.length && !capsSaid) {
     capsSaid = true;
     toastAside(`This browser can't save ${missing.map((f) => CAPS_NOTE_LABEL[f] || f).join(" or ")}`
-      + " — everything else still works.");
+      + ". Everything else still works.");
   }
 }
 let capsSaid = false;
@@ -252,7 +252,7 @@ export function reflectDirty() {
   const byField = new Map();
   let any = false;
   for (const [id, on] of Object.entries(dirty)) {
-    const field = $(id)?.closest(".field");
+    const field = $(id)?.closest(".plan-item");
     if (field) byField.set(field, byField.get(field) || on);
     any = any || on;
   }
@@ -270,11 +270,11 @@ export function reflectDirty() {
 function sayChanged(field, on) {
   const label = field.querySelector("label");
   if (!label) return;
-  let flag = label.querySelector(".vh");
+  let flag = label.querySelector(".s-sr-only");
   if (on && !flag) {
     flag = document.createElement("span");
-    flag.className = "vh";
-    flag.textContent = " — changed from automatic";
+    flag.className = "s-sr-only";
+    flag.textContent = ", changed from automatic";
     label.appendChild(flag);
   } else if (!on && flag) {
     flag.remove();

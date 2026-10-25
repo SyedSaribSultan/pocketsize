@@ -421,9 +421,13 @@ def _about_section(spec):
     faqs_html = "\n".join(
         f"    <h2>{q}</h2>\n    <p>{a}</p>" for q, a in spec["faqs"]
     )
-    paras = "\n".join(f"    <p>{p}</p>" for p in spec["paras"])
+    # The first paragraph is the page's lede (the system's body-lg muted);
+    # the rest is prose.
+    paras = "\n".join(
+        f'    <p class="s-lede">{p}</p>' if i == 0 else f"    <p>{p}</p>"
+        for i, p in enumerate(spec["paras"]))
     return f'''<section id="about" aria-labelledby="about-h">
-  <div class="about-inner">
+  <div class="about-inner s-prose">
     <h2 id="about-h">{spec["h1"]}</h2>
 {paras}
 {faqs_html}
@@ -485,7 +489,7 @@ def render(spec, template):
     # The page's one <h1> is the hidden document title at the top of body
     # (see index.html); each use-case page gets its own phrase there, the same
     # words its visible about heading (an h2) opens with.
-    html = re.sub(r'(<h1 class="vh">)[^<]*',
+    html = re.sub(r'(<h1 class="s-sr-only">)[^<]*',
                   lambda m: m.group(1) + spec["h1"], html, count=1)
 
     html = re.sub(r'<section id="about" aria-labelledby="about-h">.*?</section>',

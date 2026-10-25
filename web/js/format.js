@@ -74,9 +74,9 @@ export const fmtLabel = (f) => FORMAT_LABEL[f] || (f ? f.toUpperCase() : "");
  *  ("always JPEG") rather than as names. The technical residue carries its
  *  meaning in place: "every pixel kept" is what lossless means, said plainly. */
 export const FORMAT_CHOICE_LABEL = {
-  jpeg: "JPEG", webp: "WebP", "webp-lossless": "WebP — every pixel kept",
-  png: "PNG — every pixel kept", png8: "PNG — fewer colors",
-  png8x: "PNG — fewer colors, every pixel kept", avif: "AVIF",
+  jpeg: "JPEG", webp: "WebP", "webp-lossless": "WebP, every pixel kept",
+  png: "PNG, every pixel kept", png8: "PNG, fewer colors",
+  png8x: "PNG, fewer colors, every pixel kept", avif: "AVIF",
 };
 
 /** Which formats can honour "identical — every pixel kept". Everything else is

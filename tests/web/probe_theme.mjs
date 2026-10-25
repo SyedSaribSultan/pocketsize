@@ -58,8 +58,8 @@ const TEXT_TARGETS = [
   { sel: "#plan-h", min: 3, what: "a region heading" },
   { sel: '#plan-fields label[for="target"]', min: 4.5, what: "a field label" },
   { sel: "#quality-note", min: 3, what: "the plan's summary" },
-  { sel: "#queue-list .row .name", min: 4.5, what: "a filename in the list" },
-  { sel: "#queue-list .row .sub", min: 3, what: "a row's result line" },
+  { sel: "#queue-list .s-row .name", min: 4.5, what: "a filename in the list" },
+  { sel: "#queue-list .s-row .s-row__sub", min: 3, what: "a row's result line" },
   { sel: "#out-name", min: 4.5, what: "the export name" },
   { sel: "#s-size", min: 4.5, what: "the result's size" },
   { sel: "#s-saved", min: 3, what: "what the picture became" },
@@ -113,10 +113,13 @@ try {
          alone - a palette half-defined in a media block moves one and not the
          others. */
       out.surfaces = [...new Set(
-        [...document.querySelectorAll("#bar, #side, #stage, #queue-list, .row, .btn")]
+        [...document.querySelectorAll("#bar, #side, #stage, #queue-list, .s-row, .s-btn")]
+          // On screen only: a button in a closed dialog paints nothing, and the
+          // ink fill of one is the dark scheme's ground by design.
+          .filter((e) => e.getClientRects().length > 0)
           .map((e) => getComputedStyle(e).backgroundColor)
           // A transparent background has no colour to move, so comparing it across
-          // schemes proves nothing. `.btn.quiet` is deliberately transparent.
+          // schemes proves nothing. The ghost buttons are deliberately transparent.
           .filter((c) => !/rgba\([^)]*,\s*0\s*\)$/.test(c)))];
       return out;
     }, TEXT_TARGETS);

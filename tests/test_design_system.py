@@ -1,5 +1,12 @@
 """The design system has one place for values, and the page consumes names.
 
+Since 2026-10-25 (phase 5 of the Sarib unification) the one place is the
+vendored Sarib design system itself - web/sarib/, hash-locked by
+sarib-design.lock.json - and every control on the page is one of its
+canonical s- components. The app's own sheets place things and draw the
+photograph's furniture; they consume --s-* tokens directly. base.css keeps
+the few values the system has no token for.
+
 This file used to cover two interfaces. The desktop app is gone, and with it
 the copies, the sync tool that produced them, and the five test classes that
 policed a second visual identity for the same product. What remains is the rule
@@ -24,8 +31,15 @@ sys.path.insert(0, str(ROOT))
 WEB = ROOT / "web"
 WEB_CSS_DIR = WEB / "css"
 
+import hashlib  # noqa: E402
+import json  # noqa: E402
+import shutil  # noqa: E402
+import subprocess  # noqa: E402
+
 from tools import gen_fonts  # noqa: E402
-from tools import gen_tokens_subset as gen_tokens
+
+SARIB = WEB / "sarib"
+LOCK = ROOT / "sarib-design.lock.json"
 
 WEB_SHEETS = ("base.css", "layout.css", "controls.css",
               "queue.css", "compare.css")
@@ -44,6 +58,11 @@ _JS_SET_TOKENS = frozenset({
     "--picker-max", "--picker-wide",
 })
 
+# The only custom properties the app may define for itself: the
+# over-the-photograph constants and the grip glyph. Everything else is a
+# system token, read straight from web/sarib/tokens.css.
+_APP_OWN = frozenset({"--c-checker-ground", "--c-checker-square", "--icon-grip"})
+
 
 def _read(path: Path) -> str:
     with path.open("r", encoding="utf-8", newline="") as fh:
@@ -55,11 +74,9 @@ def _web_css(name: str) -> str:
 
 
 class TheBrowserAppHasOnePlaceForValues(unittest.TestCase):
-    """base.css aliases the app's vocabulary onto the Sarib token layer (--c-bg
-    is --s-color-background, and so on), and every other sheet consumes only
-    those aliases. One indirection, enforced here: base.css defines; the rest
-    consume.
-    """
+    """Every value is a system token or one of the three names base.css
+    defines. No sheet keeps a private alias layer (--c-bg, --c-ink, ...) any
+    more: that indirection is what let pass 1 drift from the system."""
 
     def test_every_sheet_exists(self):
         for name in WEB_SHEETS:
@@ -91,9 +108,13 @@ class TheBrowserAppHasOnePlaceForValues(unittest.TestCase):
                 self.assertEqual(found, [], f"{name} hand-types {found}")
 
     def test_every_token_used_is_defined_in_base(self):
+        """...or in the vendored token layer, which is where every --s-*
+        value lives."""
         defined = set(re.findall(r"^\s*(--[a-z0-9-]+)\s*:",
                                  _web_css("base.css"), re.M))
-        for name in WEB_SHEETS[1:]:
+        defined |= set(re.findall(r"^\s*(--[a-z0-9-]+)\s*:",
+                                  _read(SARIB / "tokens.css"), re.M))
+        for name in WEB_SHEETS:
             used = set(re.findall(r"var\((--[a-z0-9-]+)", _web_css(name)))
             # Locally-set custom properties, written by JS or by a sibling rule.
             # --side-w and --queue-h are the person's own panel sizes, written
@@ -157,54 +178,58 @@ class TheTypefaceIsGenerated(unittest.TestCase):
             "Bricolage and then Geist were left in")
 
 
-class TheTokenSheetIsGenerated(unittest.TestCase):
-    """web/sarib-tokens.css is pruned from the vendored kit, not hand-cut.
+class TheDesignSystemIsVendoredVerbatim(unittest.TestCase):
+    """web/sarib/ is a byte-for-byte copy of the sarib-design build.
 
-    The vendored sheet carries the whole Sarib design system plus its drop-in
-    base element styles; this app reaches a small fraction of the tokens and
-    none of the base styles, and the rest is dead weight on a render-blocking
-    resource. Cutting it by hand would work exactly once - the next re-vendor
-    would restore it silently - so the cut is a generator and this is what
-    stops it rotting.
+    Pass 1 hand-copied the tokens and re-implemented the components, and the
+    copies drifted within a day. Now the whole system is vendored by
+    sarib-design/scripts/sync.mjs, every file's sha256 is in
+    sarib-design.lock.json, and these hold the copy to the lock and the app's
+    sheets to "never restyle an s- class".
     """
 
-    def test_the_shipped_sheet_matches_the_generator(self):
-        self.assertEqual(
-            gen_tokens.main(["--check"]), 0,
-            "web/sarib-tokens.css is stale. Run "
-            "`python tools/gen_tokens_subset.py` and commit the result.")
+    def test_every_vendored_file_matches_the_lock(self):
+        lock = json.loads(_read(LOCK))
+        self.assertEqual(lock["target"], "web/sarib")
+        self.assertGreater(len(lock["files"]), 4)
+        for rel, want in lock["files"].items():
+            with self.subTest(file=rel):
+                data = (ROOT / rel).read_bytes()
+                self.assertEqual(hashlib.sha256(data).hexdigest(), want,
+                                 f"{rel} was edited by hand; change sarib-design and re-sync")
 
-    def test_the_full_kit_is_kept_for_regeneration(self):
-        self.assertTrue(
-            gen_tokens.SOURCE.is_file(),
-            f"{gen_tokens.SOURCE.relative_to(ROOT)} is missing - the pruned "
-            "sheet cannot be rebuilt or re-vendored without it.")
+    def test_the_sarib_check_passes(self):
+        """The system's own gate (a vendored copy of sarib-design's
+        check.mjs): integrity, and no app sheet defining an .s-* selector, a
+        --s-* token or a .btn outside sarib.allow.json's reasoned entries."""
+        node = shutil.which("node")
+        self.assertIsNotNone(node, "node is needed for tools/sarib-check.mjs")
+        r = subprocess.run([node, str(ROOT / "tools" / "sarib-check.mjs"), str(ROOT)],
+                           capture_output=True, text=True, encoding="utf-8")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 
-    def test_the_prune_keeps_every_token_the_app_reads(self):
-        """The real invariant: nothing the app reaches may be cut.
+    def test_every_icon_the_page_paints_is_precached(self):
+        """An icon is a CSS mask fetched from /sarib/icons/. One that is not
+        in the service worker's precache is a blank square offline."""
+        sources = [_read(WEB / "index.html")] + [_read(p) for p in sorted(WEB.glob("js/*.js"))]
+        named = set()
+        for text in sources:
+            named |= set(re.findall(r'data-icon="([a-z0-9-]+)"', text))
+            for m in re.findall(r"dataset\.icon = ([^;]+);", text):
+                named |= set(re.findall(r'"([a-z0-9-]+)"', m))
+        self.assertTrue(named, "found no icons - the scan is broken")
+        sw = _read(WEB / "sw.js")
+        for name in sorted(named):
+            with self.subTest(icon=name):
+                self.assertTrue((SARIB / "icons" / f"{name}.svg").is_file(),
+                                f"{name} is not in the vendored icon set")
+                self.assertIn(f'"/sarib/icons/{name}.svg"', sw)
 
-        A generator that pruned too eagerly would leave a var() resolving to
-        nothing, which CSS reports by silently dropping the declaration - no
-        error, just an unstyled control. So the check is direct: every token
-        named anywhere outside the sheet is defined inside the shipped one.
-        """
-        shipped = _read(WEB / "sarib-tokens.css")
-        defined = set(re.findall(r"^\s*(--[a-z0-9-]+)\s*:", shipped, re.M))
-        # base.css is the app's own vocabulary and defines its own names; the
-        # palette only has to satisfy what is left.
-        own = set(re.findall(r"^\s*(--[a-z0-9-]+)\s*:", _web_css("base.css"), re.M))
-        missing = sorted(gen_tokens.used_tokens() - defined - own - _JS_SET_TOKENS)
-        self.assertEqual(
-            missing, [],
-            "the pruned sheet drops tokens the app still asks for")
-
-    def test_the_kit_base_styles_are_not_shipped(self):
-        """The kit's drop-in `.btn`, `body` and friends would sit in front of
-        the app's own controls - two systems arguing about one button."""
-        shipped = _read(WEB / "sarib-tokens.css")
-        self.assertNotIn("Base element styles", shipped)
-        self.assertIsNone(re.search(r"^\.btn\b", shipped, re.M),
-                          "the kit's .btn shipped beside the app's own")
+    def test_the_system_sheets_are_precached(self):
+        sw = _read(WEB / "sw.js")
+        for f in ("tokens.css", "components.css", "icons.css"):
+            with self.subTest(sheet=f):
+                self.assertIn(f'"/sarib/{f}"', sw)
 
 
 class TheAppIsDrawnInTheSaribSystem(unittest.TestCase):
@@ -220,15 +245,22 @@ class TheAppIsDrawnInTheSaribSystem(unittest.TestCase):
     PAGES = sorted(p.name for p in WEB.glob("*.html"))
 
     def test_every_page_links_the_sarib_sheet_before_base(self):
+        """Tokens, then the components, then the icons, then the app's own
+        sheets - which are unlayered, so they win for layout without a
+        specificity fight."""
         for name in self.PAGES:
             html = _read(WEB / name)
             with self.subTest(page=name):
                 self.assertNotIn("heyoz-tokens.css", html)
-                tokens = html.find('href="/sarib-tokens.css"')
+                self.assertNotIn("sarib-tokens.css", html)
+                at = [html.find(f'href="/sarib/{f}"')
+                      for f in ("tokens.css", "components.css", "icons.css")]
                 base = html.find('href="/css/base.css"')
-                self.assertNotEqual(tokens, -1, f"{name} does not link sarib-tokens.css")
+                for f, a in zip(("tokens", "components", "icons"), at):
+                    self.assertNotEqual(a, -1, f"{name} does not link /sarib/{f}.css")
                 self.assertNotEqual(base, -1, f"{name} does not link base.css")
-                self.assertLess(tokens, base, "the tokens must load before base.css")
+                self.assertEqual(at, sorted(at))
+                self.assertLess(at[-1], base, "the system must load before base.css")
 
     def test_the_heyoz_layer_is_gone(self):
         self.assertFalse((WEB / "heyoz-tokens.css").exists())
@@ -242,27 +274,25 @@ class TheAppIsDrawnInTheSaribSystem(unittest.TestCase):
                 self.assertNotIn("--oz-", text)
                 self.assertNotIn("heyoz-tokens", text)
 
-    def test_base_aliases_only_onto_sarib_tokens(self):
-        """Every token base.css reads from outside itself is an --s- token."""
-        css = _web_css("base.css")
-        own = set(re.findall(r"^\s*(--[a-z0-9-]+)\s*:", css, re.M))
-        read = set(re.findall(r"var\((--[a-z0-9-]+)", css)) - own
-        foreign = sorted(t for t in read if not t.startswith("--s-"))
-        self.assertEqual(foreign, [], "base.css reads tokens from outside the system")
-        for alias, token in (("--c-bg", "--s-color-background"),
-                             ("--c-ink", "--s-color-content-primary"),
-                             ("--c-line", "--s-color-border-primary"),
-                             ("--c-accent", "--s-color-fill-brand"),
-                             ("--c-focus", "--s-color-border-focus"),
-                             ("--radius", "--s-radius-8"),
-                             ("--radius-lg", "--s-radius-10")):
-            with self.subTest(alias=alias):
-                self.assertRegex(css, rf"(?m)^\s*{re.escape(alias)}:\s*var\({re.escape(token)}\);")
+    def test_no_sheet_keeps_a_private_alias_layer(self):
+        """Every var() a sheet reads is a system token, one of base.css's
+        three own names, or a property JavaScript writes. The pass-1 alias
+        layer (--c-bg, --c-ink, --radius, ...) is gone and stays gone."""
+        own = set(re.findall(r"^\s*(--[a-z0-9-]+)\s*:", _web_css("base.css"), re.M))
+        self.assertEqual(sorted(o for o in own if not o.startswith("--s-")),
+                         sorted(_APP_OWN))
+        for name in WEB_SHEETS:
+            read = set(re.findall(r"var\((--[a-z0-9-]+)", _web_css(name)))
+            foreign = sorted(t for t in read
+                             if not t.startswith(("--s-", "--site-"))
+                             and t not in _APP_OWN and t not in _JS_SET_TOKENS)
+            with self.subTest(sheet=name):
+                self.assertEqual(foreign, [], f"{name} reads a private alias")
 
     def test_the_system_values_are_what_resolve(self):
         """The shipped sheet carries the system's own values: warm ink and
         ground in both modes, the brand red, the red-orange focus ring."""
-        shipped = _read(WEB / "sarib-tokens.css")
+        shipped = _read(SARIB / "tokens.css")
         light = shipped[:shipped.index('[data-theme="dark"]')]
         dark = shipped[shipped.index('[data-theme="dark"]'):]
         for block, token, value in (

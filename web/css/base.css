@@ -1,304 +1,73 @@
-/* Reset, aliases, and element defaults.
+/* Element defaults and the few values the design system has no token for.
  *
- * The values come from the Sarib design system (sarib-tokens.css, loaded
- * before this file - the visual system of syedsarib.com): every colour, space,
- * radius, duration and face below is an alias onto an --s-* token. The aliases
- * are kept - rather than using --s-* names downstream - because the rest of the
- * stylesheets consume a small vocabulary sized to this app, and because the
- * one-place-for-values gate (tests/test_design_system.py) holds every other
- * sheet to names defined HERE.
+ * Pocketsize is drawn in the Sarib design system (the visual system of
+ * syedsarib.com), vendored verbatim under web/sarib/ and hash-locked:
  *
- * The system in one breath: warm neutrals (never a true grey), hairline
- * borders and no shadows on resting surfaces, very rounded controls, two faces
- * with clear jobs - Google Sans Flex for everything read and clicked, Google
- * Sans Code for headlines and figures - and the brand red used in one place at
- * a time.
+ *   /sarib/tokens.css       every value, light and dark (flips on data-theme)
+ *   /sarib/components.css   every canonical component as an s- class
+ *   /sarib/icons.css        the icon set, as CSS masks on .s-icon
  *
- * Theme: the token layer flips on data-theme="dark" and treats anything else
- * as light. js/theme.js always stamps a RESOLVED theme before first paint -
- * the saved choice when there is one, the OS's answer otherwise - and
- * re-stamps when the OS changes. There is no unstamped state to style.
+ * This app never restyles an s- class (sarib-design/scripts/check.mjs fails
+ * the tests if it tries). Its own sheets only PLACE things - grid, gap, width,
+ * which region sits where - and draw the one part the system has no
+ * component for: the photograph on the stage, with the caliper over it.
+ * Every value they use is an --s-* token, or one of the names below.
+ *
+ * Depth is the system's plane model: the app bar is the P0 band, the
+ * dashboard is the P1 canvas, the files, the plan and the stage are P2 objects
+ * on it, and what floats over the photograph is P3. Shadows only on P3.
+ *
+ * Theme: js/theme.js always stamps a RESOLVED data-theme on <html> before
+ * first paint, and the token layer flips on it.
  */
 
 :root {
-  /* Surfaces, back to front. --c-sunk is the system's page canvas: its
-     translucent fill-primary-disabled (a 50% tint of the first warm neutral)
-     composited over the page ground, so the bar reads as a pure band above
-     the work area. Written as the composited colour (the system's own
-     measured value, DESIGN.md 2.2) rather than painted translucent, because
-     sticky headings sit on it and a translucent ground would show the list
-     scrolling underneath. The dark value is in the block below. */
-  --c-bg: var(--s-color-background);
-  --c-sunk: #fbfbfa;
-  --c-raised: var(--s-color-surface-elevated);
-  --c-field: var(--s-color-fill-primary-variant);
-  --c-fill: var(--s-color-fill-secondary);
-  --c-fill-hover: var(--s-color-fill-secondary-hover);
-  --c-fill-active: var(--s-color-fill-secondary-active);
-  --c-line: var(--s-color-border-primary);
-
-  /* Ink, loudest to quietest. */
-  --c-ink: var(--s-color-content-primary);
-  --c-ink-2: var(--s-color-content-secondary);
-  --c-ink-3: var(--s-color-content-tertiary);
-
-  /* The one accent: the brand red, carried by the primary action and nothing
-     decorative, plus the focus ring and the accent text of links. */
-  --c-accent: var(--s-color-fill-brand);
-  --c-accent-hover: var(--s-color-fill-brand-hover);
-  --c-accent-active: var(--s-color-fill-brand-active);
-  --c-accent-ink: var(--s-color-content-fixed-inverse);
-  --c-accent-text: var(--s-color-content-brand);
-  --c-accent-text-hover: var(--s-color-content-brand-hover);
-  --c-focus: var(--s-color-border-focus);
-  --c-selection: var(--s-color-fill-text-selection);
-
-  /* Ink as a surface: pressed and "this one" states that must not be red,
-     because the red is already spoken for on the screen. */
-  --c-inverse: var(--s-color-fill-inverse);
-  --c-inverse-ink: var(--s-color-content-primary-inverse);
-
-  /* Verdicts. Never the only carrier of meaning - each is paired with words. */
-  --c-good: var(--s-color-content-success);
-  --c-warn: var(--s-color-content-warning);
-  --c-bad: var(--s-color-content-critical);
-
   /* Over the photograph. These sit on top of an arbitrary image, not on a
      themed surface, so they deliberately do NOT move with the theme: the
-     white checkerboard is the one universal sign for transparency, and the
-     dark glass pills must hold against any picture in either scheme. The raw
-     values live here and nowhere else - probe_theme knows they stay put, and
-     the design-system test forbids a sheet from hand-typing a colour. Warm, as
-     everything in the system is: the glass is the system's ink, not black. */
-  --c-checker-ground: #ffffff;
+     white-and-grey checkerboard is the one universal sign for transparency.
+     The square is the system's first warm neutral, written as a literal
+     because no token holds a neutral that stays put across themes - this is
+     the one colour literal the app owns. Everything else over the picture is
+     the system's on-image fill and fixed white. */
+  --c-checker-ground: var(--s-color-surface-fixed);
   --c-checker-square: #ecebe8;
-  --c-over-line: rgb(255 255 255 / 0.9);
-  --c-over-grip: rgb(255 255 255 / 0.94);
-  --c-over-glass: rgb(15 14 12 / 0.66);
-  --c-over-glass-strong: rgb(15 14 12 / 0.74);
-  --c-over-ink: #ffffff;
-  --c-over-shadow: rgb(15 14 12 / 0.35);
 
-  /* Space. Six steps of the system scale (4/8/12/16/24/32). */
-  --s-1: var(--s-spacing-1);
-  --s-2: var(--s-spacing-3);
-  --s-3: var(--s-spacing-4);
-  --s-4: var(--s-spacing-5);
-  --s-5: var(--s-spacing-7);
-  --s-6: var(--s-spacing-9);
-
-  /* Shape: very rounded UI. 16px on controls (the system's md button), 12px
-     on small things inside them, 20px on cards and floating panels, and full
-     pills for chips, tags and the segmented track. */
-  --radius: var(--s-radius-8);
-  --radius-sm: var(--s-radius-6);
-  --radius-lg: var(--s-radius-10);
-  --radius-pill: var(--s-radius-full);
-  --radius-btn-sm: var(--s-radius-7);
-
-  /* The floor a finger can actually hit. Applied to every control wherever
-     the pointer is coarse or the layout is one-handed. */
-  --s-target: var(--s-size-target-min);
-
-  /* Two stacks, the system's two faces. Google Sans Flex sets the interface -
-     everything read and clicked, from the wordmark to the smallest label - and
-     Google Sans Code keeps the figures, because tabular digits are what stop a
-     column of sizes jittering as it counts. Code is also the system's headline
-     face, which is what --font-display means here.
-
-     --font-ui and --font-num are written by tools/gen_fonts.py, which also
-     self-hosts the files (the CSP is default-src 'none': no font CDN). They are
-     named here as literals rather than taken from the token layer's
-     --s-font-family-* stacks so the generator has one line to own. */
-  --font-ui: 'Google Sans Flex', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-
-  /* How much bigger this face has to be set to READ the size it is nominally
-     at. Fonts are specified in px but perceived by x-height, and the two come
-     apart between families. Every UI size is written as
-     `calc(<px> * var(--type-scale))`, and tools/gen_fonts.py measures the face
-     and writes this - for a face with a normal x-height it sits at or near 1.
-     The figures do NOT scale with it. */
-  --type-scale: 1.02;
-  --font-num: 'Google Sans Code', ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
-  --font-display: var(--font-num);
-
-  /* Weights: the system renders 400 and 500 only. */
-  --w-regular: var(--s-font-weight-regular);
-  --w-medium: var(--s-font-weight-medium);
-
-  /* Interaction states, straight off the system ramps. Hover and press are
-     colour steps, never invented tints. */
-  --c-ghost-hover: var(--s-color-fill-primary-variant-hover);
-  --c-ghost-active: var(--s-color-fill-primary-variant-active);
-  --c-line-hover: var(--s-color-border-primary-hover);
-  --c-line-strong: var(--s-color-border-secondary);
-
-  /* Depth. Resting surfaces have none - hierarchy is border plus fill. Only
-     floating things get a shadow: the selected segment, the bars that float
-     over the photograph, and overlays. */
-  --elev-1: var(--s-elevation-sm);
-  --elev-2: var(--s-elevation-md);
-  --elev-3: var(--s-elevation-lg);
-
-  /* Motion. Colour changes on the fast duration, anything that moves on the
-     base one, both on the standard curve. The token layer zeroes every
-     duration under prefers-reduced-motion. */
-  --dur-fx: var(--s-motion-duration-fast);
-  --ease-fx: var(--s-motion-easing-standard);
-  --dur-move: var(--s-motion-duration-base);
-  --ease-move: var(--s-motion-easing-standard);
-
-  /* The overlay behind the dialogs: the system's ink at 30%, no blur. */
-  --overlay-dim: color-mix(in srgb, var(--s-color-content-primary) 30%, transparent);
-
-  /* Glyphs painted from CSS (Lucide, ISC - see vendor/LICENSES.md), at the
-     system's 1.5px stroke. A data URI cannot use currentColor, so the two that
-     sit on themed ground carry the theme's secondary ink and are re-issued in
-     the dark block below. The grip sits on the white disc over the photograph
-     and never moves. */
-  --icon-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23605f5c' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-  --icon-grip: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230f0e0c' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 7-5 5 5 5'/%3E%3Cpath d='m15 7 5 5-5 5'/%3E%3C/svg%3E");
-  --icon-pencil: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23605f5c' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z'/%3E%3C/svg%3E");
+  /* The caliper grip's glyph (Lucide chevrons, ISC - see vendor/LICENSES.md)
+     as a mask, so its colour comes from a token rather than from the file. */
+  --icon-grip: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 7-5 5 5 5'/%3E%3Cpath d='m15 7 5 5-5 5'/%3E%3C/svg%3E");
 }
-
-:root[data-theme="dark"] {
-  --c-sunk: #141311;
-  --icon-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b8b7b4' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-  --icon-pencil: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b8b7b4' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z'/%3E%3C/svg%3E");
-}
-
-/* Light theme only: the system's faint ink is ink at 50%, which its own docs
-   accept as below 4.5:1. This app sets it on 13-15px readouts that have to be
-   read, so in light it is the same ink at 62% instead - 4.6:1 on the canvas -
-   still clearly quieter than --c-ink-2. Dark clears the bar as shipped
-   (4.9:1) and keeps the system value. */
-:root:not([data-theme="dark"]) {
-  --c-ink-3: rgba(15, 14, 12, 0.62);
-}
-
-*, *::before, *::after { box-sizing: border-box; }
 
 html, body { height: 100%; }
 
-html {
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* 16px base, the system's body-md, and nothing anywhere below 13px. */
-body {
-  margin: 0;
-  background: var(--c-bg);
-  color: var(--c-ink);
-  font: calc(16px * var(--type-scale))/1.5 var(--font-ui);
-  letter-spacing: 0.005em;
-}
-
-::selection { background-color: var(--c-selection); }
-
-/* Figures, wherever they appear. Tabular so widths do not shift mid-count. */
-.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; letter-spacing: 0; }
-
-h1, h2, h3 { margin: 0; font-size: 1rem; font-weight: var(--w-medium); }
-
-/* Display type is the system's headline face: Google Sans Code, regular. */
-.display { font-family: var(--font-display); font-weight: var(--w-regular); letter-spacing: 0; }
-
-/* Nothing heavier than medium: the system renders 400 and 500 only. The user
-   agent styles these at `bold` (700). */
-b, strong, th { font-weight: var(--w-medium); }
-
-/* Section labels. Small and quiet: the data is the content, not its name.
-   The system's meta style - Code face, 14px, faint, sentence case. No
-   all-caps, no tracking. */
-h2, h3 {
-  font-family: var(--font-num);
-  font-size: 14px;
-  line-height: 1.43;
-  font-weight: var(--w-regular);
-  letter-spacing: 0;
-  color: var(--c-ink-3);
-}
-
-p { margin: 0; }
-
-a { color: var(--c-accent-text); text-underline-offset: 2px; }
-a:hover { color: var(--c-accent-text-hover); }
-
-img, canvas { max-width: 100%; }
-
-code {
-  font-family: var(--font-num);
-  font-size: 0.9em;
-  padding: 0 var(--s-1);
-  border-radius: var(--radius-sm);
-  background: var(--c-fill);
-  color: var(--c-ink);
-}
-
+/* Keyboard shortcuts in the help card: the system's inline code, set on the
+   well fill with a hairline so a key reads as a key. */
 kbd {
-  font: 13px var(--font-num);
-  padding: 1px var(--s-1);
-  border: 1px solid var(--c-line);
-  border-radius: var(--radius-sm);
-  background: var(--c-field);
-  color: var(--c-ink-2);
+  display: inline-block;
+  min-width: var(--s-spacing-7);
+  padding: 0 var(--s-spacing-2);
+  border: var(--s-stroke-width-2) solid var(--s-color-border-primary);
+  border-radius: var(--s-radius-6);
+  background: var(--s-color-fill-primary-variant);
+  font: var(--s-type-code-body-sm);
+  color: var(--s-color-content-secondary);
+  text-align: center;
 }
 
-/* One focus treatment for everything, and it is never removed: keyboard
-   focus only, the system's focus colour, 2px at a 2px offset. */
-:focus-visible {
-  outline: 2px solid var(--c-focus);
-  outline-offset: 2px;
-}
-
-/* Reachable by keyboard, out of the way otherwise. */
-.skip {
-  position: absolute;
-  left: -9999px;
-  top: var(--s-2);
-  padding: var(--s-2) var(--s-3);
-  background: var(--c-raised);
-  color: var(--c-ink);
-  border: 1px solid var(--c-line);
-  border-radius: var(--radius);
-  z-index: 10;
-}
-.skip:focus { left: var(--s-2); }
-
-.muted { color: var(--c-ink-3); }
 .spacer { flex: 1; }
 
-/* Present for assistive tech, absent from the paint. For state a sighted
-   person already sees drawn another way - the changed-field dot, the page's
-   own top-level heading - so the words travel with the element they name. */
-.vh {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border: 0;
+/* Someone asked their OS for more contrast: the quiet inks step up one rung
+   and the hairlines darken. The system has no high-contrast mode of its own,
+   so this is the one place the app re-points system roles - listed, with its
+   reason, in sarib.allow.json. */
+@media (prefers-contrast: more) {
+  :root, [data-theme] {
+    --s-color-border-primary: var(--s-color-border-tertiary);
+    --s-color-content-tertiary: var(--s-color-content-secondary);
+  }
 }
 
-[hidden] { display: none !important; }
-
+/* Reduced motion: the token layer already zeroes every duration; this also
+   stills anything of the app's own. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
-}
-
-/* Someone asked their OS for more contrast: the quiet inks step up one rung
-   and the hairlines darken. The ramp is the system's own, so both themes
-   stay coherent. */
-@media (prefers-contrast: more) {
-  /* Both selectors, so the bump also outweighs the light-theme --c-ink-3
-     override above - which is more specific than a bare :root. */
-  :root, :root:not([data-theme="dark"]) {
-    --c-line: var(--s-color-border-tertiary);
-    --c-ink-2: var(--s-color-content-primary);
-    --c-ink-3: var(--s-color-content-secondary);
-  }
 }

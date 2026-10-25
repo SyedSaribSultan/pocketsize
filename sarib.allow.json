@@ -1,0 +1,9 @@
+{
+  "entries": [
+    {
+      "file": "web/css/base.css",
+      "pattern": "--s-color-border-primary",
+      "reason": "prefers-contrast: more. The system has no high-contrast mode, so when the OS asks for more contrast the app steps the hairline and the faint ink up one rung of the system's own ramp (border-tertiary, content-secondary). Nothing else in the app re-points a system role."
+    }
+  ]
+}

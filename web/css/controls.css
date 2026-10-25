@@ -1,187 +1,124 @@
-/* Controls: buttons, native form fields, the toast, the one dialog.
+/* The plan card's form, the listbox it draws, the help card's key list, the
+ * toast region's place and the drag feedforward.
  *
- * Two button weights and no more. `.btn` is every action; `.btn.primary` is the
- * one action a region is for, and a region gets at most one. Everything else -
- * quieter, smaller, iconic - is the same button with less padding, because a
- * third weight is a third thing to decide and nobody could tell the second from
- * the third anyway.
- *
- * The form fields are native and stay native. A <select> here is a real select:
- * the operating system's own popup opens, the keyboard works, and no part of
- * this file tries to repaint a control it does not fully own.
+ * Every control here IS a system component - s-btn, s-field, s-field--select,
+ * s-switch, s-menu, s-dialog, s-toast, s-drop-pill - used as shipped. This
+ * sheet only arranges them, and hooks the app's own state onto them.
  */
 
-/* The system's button: a soft squircle, regular weight, no border, no
-   shadow, no lift - state is a fill change and nothing else. The default is
-   the system's "secondary" (the muted fill); .primary is the brand red, which
-   is why a region gets at most one; .quiet is the ghost. */
-.btn {
-  font: inherit;
-  font-weight: var(--w-regular);
-  display: inline-flex;
+/* ------------------------------- the form -------------------------------- */
+
+/* The plan card: one column of form items, the system's form gap between
+   them. The notes under the fields and the reset sit closer, because they
+   belong to the field above. */
+#plan-fields { gap: var(--s-spacing-6); }
+#plan-fields > .plan-note { margin-top: calc(var(--s-spacing-4) * -1); }
+#plan-reset { align-self: flex-start; }
+
+/* A pair: a choice and the number it qualifies, side by side until the card
+   is too narrow, then stacked. The number field sizes to its value. */
+.pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-spacing-3);
+  min-width: 0;
+}
+.pair > * { flex: 1 1 10ch; min-width: 0; }
+#maxdim-field, #plan-cap-field { flex: 0 1 auto; }
+/* Sized from the value, by the browser: every hand-computed width here has
+   been wrong at least once (7ch clipped "2560" to "256"; 9ch clipped it to
+   "2." under a wider face). field-sizing: content is the feature for exactly
+   this, and where it is unsupported the width below applies. */
+#maxdim, #plan-cap {
+  field-sizing: content;
+  width: 7ch;
+  min-width: 5ch;
+}
+/* A field whose input is hidden is not on screen at all, rather than an
+   empty box. */
+.pair > :has(> input[hidden]) { display: none; }
+
+/* What differs from automatic: a dot after the label. State made visible
+   instead of remembered; the words ride along for assistive tech. */
+.plan-item[data-changed] > .plan-label::after {
+  content: "";
+  display: inline-block;
+  width: var(--s-spacing-2);
+  height: var(--s-spacing-2);
+  margin-left: var(--s-spacing-2);
+  border-radius: var(--s-radius-full);
+  background: var(--s-color-content-secondary);
+  vertical-align: middle;
+}
+
+/* ----------------------------- more choices ------------------------------ */
+
+/* The rest of the plan, folded away under a disclosure row. Native
+   <details>, so the state is the browser's own. Set as a ghost row: muted at
+   rest, ink on hover, the chevron turning a quarter. */
+#more-choices { margin-top: calc(var(--s-spacing-3) * -1); }
+#more-choices > summary {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  gap: var(--s-2);
-  padding: var(--s-2) var(--s-4);
-  border: 1px solid transparent;
-  border-radius: var(--radius);
-  background: var(--c-fill);
-  color: var(--c-ink);
+  gap: var(--s-spacing-3);
+  min-height: var(--s-row-h-md);
+  margin-inline: calc(var(--s-spacing-4) * -1);
+  padding-inline: var(--s-spacing-4);
+  border-radius: var(--s-radius-7);
+  font: var(--s-type-body-md);
+  color: var(--s-color-content-secondary);
   cursor: pointer;
-  white-space: nowrap;
-  text-decoration: none;
+  list-style: none;
+  user-select: none;
   transition:
-    background-color var(--dur-fx) var(--ease-fx),
-    border-color var(--dur-fx) var(--ease-fx),
-    color var(--dur-fx) var(--ease-fx);
+    background-color var(--s-motion-duration-fast) var(--s-motion-easing-standard),
+    color var(--s-motion-duration-fast) var(--s-motion-easing-standard);
 }
-.btn:hover:not(:disabled) { background: var(--c-fill-hover); }
-.btn:active:not(:disabled) { background: var(--c-fill-active); }
-.btn:disabled { opacity: 0.45; cursor: not-allowed; }
-
-.btn > svg { flex: none; width: 16px; height: 16px; }
-
-/* The brand fill carries white text in both themes; hover and press step
-   down the brand ramp. */
-.btn.primary {
-  background: var(--c-accent);
-  color: var(--c-accent-ink);
-  font-weight: var(--w-medium);
+#more-choices > summary::-webkit-details-marker { display: none; }
+#more-choices > summary:hover {
+  background: var(--s-color-fill-primary-variant-hover);
+  color: var(--s-color-content-primary);
 }
-.btn.primary:hover:not(:disabled) { background: var(--c-accent-hover); }
-.btn.primary:active:not(:disabled) { background: var(--c-accent-active); }
-
-/* The system's sm button: a 14px squircle radius and a tighter box. The label
-   stays at 15px - the legibility floor for control text here is 15. */
-.btn.sm {
-  padding: var(--s-1) var(--s-3);
-  font-size: calc(15px * var(--type-scale));
-  border-radius: var(--radius-btn-sm);
+#more-choices > summary > [data-icon] {
+  transition: transform var(--s-motion-duration-fast) var(--s-motion-easing-standard);
 }
-.btn.sm > svg { width: 14px; height: 14px; }
-
-/* The ghost: no fill until the pointer arrives - for actions that sit inside
-   something already framed. */
-.btn.quiet {
-  background: transparent;
-  color: var(--c-ink-2);
-}
-.btn.quiet:hover:not(:disabled) { background: var(--c-ghost-hover); color: var(--c-ink); }
-.btn.quiet:active:not(:disabled) { background: var(--c-ghost-active); color: var(--c-ink); }
-
-/* ------------------------------ form fields ------------------------------- */
-
-/* Fields follow the system's input: a hairline border on the input fill,
-   rounded like the buttons beside them, the border stepping up on hover and
-   focus. No shadow. */
-select, input[type="text"], input[type="number"] {
-  font: inherit;
-  padding: var(--s-2);
-  border: 1px solid var(--c-line);
-  border-radius: var(--radius);
-  background: var(--c-field);
-  color: var(--c-ink);
-  max-width: 100%;
-  transition: border-color var(--dur-fx) var(--ease-fx);
-}
-select:hover, input[type="text"]:hover, input[type="number"]:hover {
-  border-color: var(--c-line-hover);
-}
-select:focus, input[type="text"]:focus, input[type="number"]:focus {
-  border-color: var(--c-line-strong);
-}
-input[type="number"] { width: 7ch; }
-
-/* The select drops the platform chrome for the system's own: a quiet chevron
-   in a metal grey that reads on both grounds, so one glyph serves both themes
-   without a wrapper element per control. */
-select {
-  appearance: none;
-  -webkit-appearance: none;
-  padding-right: calc(var(--s-2) + 20px);
-  background-image: var(--icon-chevron);
-  background-repeat: no-repeat;
-  background-position: right var(--s-2) center;
-  background-size: 16px;
+#more-choices[open] > summary > [data-icon] { transform: rotate(90deg); }
+.more-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-spacing-6);
+  padding-top: var(--s-spacing-5);
 }
 
 /* ------------------------------- the picker -------------------------------
-   The plan's dropdowns, drawn rather than delegated.
+   The plan's dropdowns, drawn rather than delegated: the system's listbox
+   (an s-field__trigger in the md field shell, an s-menu[role=listbox] with a
+   trailing check on the current option).
 
-   A native <select> hands its open list to the operating system, and no page
-   can style that - so the menu was the one surface in this app wearing someone
-   else's clothes. These classes dress the button and the list in the same
-   vocabulary as everything else: the system's field, line and surface colours,
-   and an ink mark for the current choice.
+   The <select> has not gone anywhere. js/picker.js keeps it as the model and
+   hides it with .picker-native; if that module never runs, this rule is
+   inert and the native control is simply visible and working.
 
-   The <select> itself has not gone anywhere. js/picker.js keeps it as the model
-   and hides it with .picker-native below; if that module never runs, the rule
-   is inert and the native control is simply visible and working. That is the
-   whole reason the hiding lives in a class rather than in an inline style.
-   --------------------------------------------------------------------------- */
-
-/* Out of sight, out of the accessibility tree, still in the layout's flow at
-   zero size so it stays focusable and label-associable. clip-path rather than
-   display:none, which would make the element unfocusable and break the
-   fallback this component's safety rests on.
-
-   `min-width` is in this list because of what it costs when it is not. The
-   sizing rules below name their selects by id (#shrink-mode), and an id beats
-   this class - so the HIDDEN select kept an 11ch minimum and went on claiming
-   93px of a flex row it is not supposed to occupy at all. What that width
-   pushed off the end of the row was the "px" after the number, onto a line of
-   its own, away from the value it belongs to. It looked like a row that needed
-   a wider sidebar; no width fixed it, because the space was being taken by an
-   element nobody could see.
-
-   !important, which is otherwise not used in this file: this is not a
-   preference competing with other preferences, it is the invariant that an
-   invisible control occupies no space. Anything that outranks it is wrong by
-   construction. */
+   Out of sight, out of the accessibility tree, still in the layout's flow at
+   zero size so it stays focusable and label-associable: clip-path rather than
+   display:none, which would make it unfocusable. !important because an
+   invisible control occupying space is wrong by construction. */
 .picker-native {
-  position: absolute;
-  width: 1px;
+  position: absolute !important;
+  width: var(--s-stroke-width-2) !important;
   min-width: 0 !important;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
+  height: var(--s-stroke-width-2) !important;
+  padding: 0 !important;
+  margin: 0;
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
   border: 0;
 }
 
-.picker { position: relative; display: flex; min-width: 0; flex: 1; }
-
-/* The closed control. Dressed as the plan's other fields - same hairline,
-   same radius, same fill - so the column reads as one form; the chevron is
-   what says it opens. */
-.picker-btn {
-  font: inherit;
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  width: 100%;
-  min-width: 0;
-  text-align: left;
-  padding: var(--s-2) calc(var(--s-2) + 20px) var(--s-2) var(--s-3);
-  border: 1px solid var(--c-line);
-  border-radius: var(--radius);
-  background: var(--c-field) var(--icon-chevron) no-repeat
-              right var(--s-2) center / 16px;
-  color: var(--c-ink);
-  cursor: pointer;
-  transition: border-color var(--dur-fx) var(--ease-fx);
-}
-.picker-btn:hover:not(:disabled) { border-color: var(--c-line-hover); }
-.picker-btn:disabled { cursor: default; opacity: 0.55; }
-/* Open is a state the closed control shows, so the two read as one object
-   rather than as a button with an unrelated card under it. */
-.picker[data-open="1"] .picker-btn { border-color: var(--c-line-strong); }
-
-/* The value can be longer than the column; it ellipsises rather than widening
-   the sidebar. The full words ride the button's title, and the list itself
-   never truncates - see .picker-opt. */
+/* The trigger's value can be longer than the card; it ellipsises rather than
+   widening the column. The full words ride the button's title, and the list
+   itself never truncates. */
 .picker-value {
   flex: 1;
   min-width: 0;
@@ -190,371 +127,49 @@ select {
   white-space: nowrap;
 }
 
-/* The list. Absolutely positioned so it can overlap whatever follows, and
-   capped in height so a seven-item destination list scrolls inside itself
-   instead of running off a short window. */
-/* Fixed, not absolute: the sidebar is a scroll container that clips its own
-   overflow, and a menu positioned inside it could never be wider or taller
-   than the column. Fixed takes the list out of that box entirely - so
-   js/picker.js writes its viewport coordinates on every open, and the scroll
-   and resize listeners there close it rather than let it drift. */
+/* A disabled trigger wears the system's disabled field: the same tokens the
+   s-field uses for a disabled input. (Functional reason: the listbox trigger
+   is a button, and the system's disabled rule keys on an input.) */
+.picker:has(> button:disabled) {
+  border-color: var(--s-color-border-primary-disabled);
+  background: var(--s-color-fill-primary-variant-disabled);
+  color: var(--s-color-content-primary-disabled);
+  cursor: not-allowed;
+}
+
+/* The list. Fixed, not absolute: the side column is a scroll container that
+   clips its overflow, and a menu inside it could never be wider or taller
+   than the column. js/picker.js writes real viewport coordinates on every
+   open, and closes it on scroll or resize rather than let it drift.
+   --picker-max / --picker-wide are the room it measured. */
 .picker-list {
   position: fixed;
-  /* At least the button's width, but free to grow to its own content and to
-     the room measured in js/picker.js. The words in this list are the answer to
-     the question - "the same unless you zoom in and compare" - and a menu that
-     wrapped every option to three lines inside a 147px column would be the
-     truncation problem moved rather than solved. */
-  min-width: 100%;
+  z-index: var(--s-layer-dropdown);
   width: max-content;
-  max-width: var(--picker-wide, 320px);
-  z-index: 40;
-  /* --picker-max is written by js/picker.js from the room actually available
-     between the button and the edge of the viewport. The 320px is the ceiling
-     it is capped at, and the fallback if the measurement never ran. */
-  max-height: min(var(--picker-max, 320px), 320px);
-  overflow-y: auto;
-  padding: var(--s-1);
-  border: 1px solid var(--c-line);
-  border-radius: var(--radius);
-  background: var(--c-raised);
-  box-shadow: var(--elev-2);
-  /* Overscroll containment: reaching the end of this list must not start
-     scrolling the sidebar behind it. */
+  max-width: min(var(--picker-wide, var(--s-menu-max-w)), var(--s-menu-max-w));
+  max-height: min(var(--picker-max, var(--s-menu-max-h)), var(--s-menu-max-h));
   overscroll-behavior: contain;
 }
-/* Which side it opens on, and where, is measured in js/picker.js and written
-   as real coordinates - there is nothing left for a static rule to assume. */
-
-.picker-opt {
-  padding: var(--s-2);
-  border-radius: var(--radius-sm);
-  color: var(--c-ink);
-  cursor: pointer;
-  /* The list is where the full words live, so an option wraps rather than
-     ellipsising: "the same unless you zoom in and compare" is the answer, and
-     an answer cut off mid-clause is not one. */
-  white-space: normal;
-}
-/* One highlight, driven by the keyboard and the pointer alike, so arrowing and
-   hovering cannot disagree about what is about to be chosen. */
-.picker-opt.is-active { background: var(--c-fill); }
-/* The current choice, which is a different fact from the active one: a mark
-   rather than a fill, so both can show at once without a colour fight. */
-.picker-opt[aria-selected="true"] {
-  font-weight: var(--w-medium);
-  box-shadow: inset 2px 0 0 var(--c-ink);
-}
-.picker-opt[aria-disabled="true"] {
-  color: var(--c-ink-3);
-  cursor: default;
-}
-.picker-opt[aria-disabled="true"].is-active { background: none; }
-
-/* A labelled row in the plan. The label is the question, the control is the
-   answer, and they stay on one line until the column is too narrow to hold
-   both - at which point the control drops below its own label rather than
-   being squeezed to nothing. */
-.field {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  flex-wrap: wrap;
-  padding: var(--s-1) 0;
-}
-.field > label {
-  flex: 0 0 128px;
-  color: var(--c-ink-2);
-}
-/* min-width: 0 is load-bearing, not defensive. A <select>'s intrinsic minimum is
-   the width of its longest <option>, and a flex item will not shrink below its
-   intrinsic minimum unless told it may - so "indistinguishable unless you
-   compare" propped the whole sidebar open to 497px inside a 375px viewport and
-   the page scrolled sideways. */
-/* The .picker wrapper stands in the layout where its <select> used to, so
-   every sizing rule in this file names both. The select is still in the
-   document - hidden, as the model - and a rule that named only it would size
-   nothing once the control is enhanced, which is exactly how the shrink row
-   collapsed to a bare chevron the first time this was tried. */
-.field > select,
-.field > .picker,
-.field > input { flex: 1 1 120px; min-width: 0; }
-
-/* The row that pairs two numbers - a size and its unit, a limit and its edge.
-   Allowed to wrap: a control squeezed until its own value cannot be read is
-   worse than a second line. */
-.field .pair {
-  flex: 1 1 120px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-2);
-  min-width: 0;
-}
-/* Wide enough that its shortest option reads whole when selected; the longer
-   "never" option may ellipsise, and the sentence under the plan restates it.
-
-   10ch, because that is what "to at most" is: ten characters. The eleventh was
-   slack, and slack in a minimum is not free here - the mode, the number and
-   its unit share one row, and at 11ch they asked for nine pixels more than the
-   row has, which put "px" on a line of its own away from the number it
-   belongs to. */
-#shrink-mode,
-#shrink-field .pair > .picker { flex: 1 1 auto; min-width: 10ch; }
-.field .pair > * { min-width: 0; }
-/* ...except the number, which sets its own floor below: a value nobody
-   can read whole is worse than a row that wraps. */
-.field .pair .valued > input[type="number"] { min-width: 9ch; }
-.field .pair > select,
-.field .pair > .picker { flex: 1; }
-/* Wide enough for four digits AND the spinner, whatever face is set.
-   
-   `ch` is the width of a "0", so it tracks the font - but only the digits do.
-   The spinner is chrome the browser adds outside that budget, and the padding
-   is fixed pixels, so a `ch` count that fit one face clipped another: swapping
-   the interface font to a wider one left "2560" rendering as "2." in a 63px
-   box that needed 81px, with every layout gate still green.
-   
-   So the width is stated as its parts. 4ch of digits is the real content, and
-   the rest is the space the control needs around it - which is why the min is
-   in pixels: the spinner does not scale with the type.
-   
-   tests/web/probe_widths.mjs measures scrollWidth against clientWidth on every
-   field with a value, at every viewport, so the next face that does not fit
-   says so rather than silently truncating a number someone is relying on. */
-.field .pair input[type="number"] {
-  flex: 0 0 auto;
-  /* 4ch of digits plus the room the control needs around them. The spinner and
-     the padding do not scale with the type, but the FONT SIZE they sit beside
-     does - so the allowance is expressed against it rather than as a constant.
-     A fixed 56px fit at --type-scale 1 and clipped again the moment the scale
-     went up, which is the same bug this line was written to fix. */
-  /* Sized by the browser from the content, with a floor.
-     
-     Every hand-computed width here has been wrong at least once: 7ch clipped
-     "2560" to "256", 9ch clipped it to "2." under a wider face, and an
-     allowance in fixed pixels stopped fitting the moment the type scaled. The
-     arithmetic keeps failing because the parts do not share a unit - digits
-     scale with the font, the spinner does not, and the padding is its own
-     thing again.
-     
-     min-content is what the field actually needs, computed by the engine that
-     draws it. The floor keeps it from collapsing when it is briefly empty. */
-  /* Sized from the value, by the browser.
-     
-     Every hand-computed width here has been wrong at least once: 7ch clipped
-     "2560" to "256", 9ch clipped it to "2." under a wider face, and a fixed
-     pixel allowance stopped fitting the moment the type scaled. The arithmetic
-     keeps failing because the parts do not share a unit - the digits scale
-     with the font, the spinner does not, and min-content on an <input> does
-     not count the value at all.
-     
-     field-sizing: content is the feature for exactly this, and it degrades
-     honestly: where it is unsupported the declaration is ignored and the
-     width below applies, which is the same generous fixed box as before. The
-     ceiling is what stops a long value pushing the sidebar's regions apart. */
-  field-sizing: content;
-  width: 9ch;
-  min-width: 9ch;
-  max-width: 100%;
-}
-
-/* A static unit beside a number, not a control - so it is never focusable and
-   never looks like something to click. */
-.unit { flex: none; color: var(--c-ink-3); align-self: center; }
-
-/* A number and its unit, bound into ONE flex item.
-   The row they sit in is allowed to wrap, and while they were two loose items
-   it wrapped BETWEEN them: "px" on a line of its own, under the field, away
-   from the number it measures. A value and its unit are one thing and now
-   travel as one. The pair still wraps as a whole when the column is too
-   narrow, which is what that rule wanted. */
-.field .pair > .valued {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  /* Never shrunk. It holds a number someone is reading, and the width below is
-     already the smallest that shows one whole - squeezing it here clipped
-     "2560" to "256", which is the same class of bug the input's own comment
-     records twice. The row wraps instead. */
-  flex: 0 0 auto;
-}
-
-/* Wins over `.field > label` on specificity, deliberately: a checkbox's label is
-   the whole row, not the 92px question column, and inheriting that basis broke
-   "Add -min to filenames" across three lines. */
-.field > label.check {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  flex: 1 1 100%;
-  color: var(--c-ink-2);
-}
-.check input { margin: 0; flex: none; }
-
-/* What the current plan will actually do, in words, under the fields that set
-   it. It is a readout and never a control, so it is never focusable. */
-.plan-why {
-  color: var(--c-ink-3);
-  font-size: calc(16px * var(--type-scale));
-  padding-top: var(--s-2);
-}
-
-/* ----------------------------- more choices ------------------------------ */
-
-/* The rest of the plan, folded away. The three fields above answer the whole
-   question for almost everyone; these answer it more precisely for the people
-   who ask. Native <details>, so it costs no script and the state is the
-   browser's own. */
-#more-choices {
-  margin-top: var(--s-3);
-  border-top: 1px solid var(--c-line);
-  padding-top: var(--s-2);
-}
-#more-choices > summary {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  cursor: pointer;
-  color: var(--c-ink-2);
-  padding: var(--s-2) 0;
-  user-select: none;
-  list-style: none;
-  transition: color var(--dur-fx) var(--ease-fx);
-}
-#more-choices > summary::-webkit-details-marker { display: none; }
-#more-choices > summary::before {
-  content: "";
-  width: 14px;
-  height: 14px;
-  flex: none;
-  background: var(--c-ink-3);
-  -webkit-mask: var(--icon-chevron) center / contain no-repeat;
-  mask: var(--icon-chevron) center / contain no-repeat;
-  rotate: -90deg;
-  transition: rotate var(--dur-move) var(--ease-move);
-}
-#more-choices[open] > summary::before { rotate: 0deg; }
-#more-choices > summary:hover { color: var(--c-ink); }
+/* The list is where the full words live, so an option wraps rather than
+   ellipsising: an answer cut off mid-clause is not one. */
+.picker-list .picker-text { white-space: normal; }
 
 /* ------------------------------ touch floor ------------------------------ */
 
 /* Wherever a finger is the pointer - and on any one-column layout, where it
-   probably is - every control clears the system's minimum target. Desktop
-   with a mouse keeps its compact heights. */
+   probably is - every control clears the system's own minimum target
+   (--s-size-target-min, 44). The system's sm and md buttons are 36 and 40
+   for a mouse; this is the owner's touch floor (CLAUDE.md), applied as a
+   height floor only, so each control keeps its look. Desktop with a mouse
+   keeps the compact heights. */
 @media (max-width: 860px), (pointer: coarse) {
-  button,
-  select,
-  input[type="text"],
-  input[type="number"],
-  summary,
-  .skip {
-    min-height: var(--s-target);
-  }
-  /* A checkbox's target is its label - the whole row toggles it - so the row
-     clears the floor and the box itself just gets big enough to read. */
-  label.check { min-height: var(--s-target); }
-  .check input { width: 20px; height: 20px; }
-
-  /* On a narrow screen the question goes above its controls rather than beside
-     them. It is the same total width either way, but as its own line the label
-     stops competing with the mode, the number and the unit for one row - which
-     is what was pushing "px" off the end on a phone. */
-  .field > label { flex: 1 0 100%; }
-}
-
-/* ------------------------------- segmented ------------------------------- */
-
-/* Mutually exclusive choices where all of them fit on screen: cheaper to read
-   than a select, because the alternatives are visible without opening
-   anything. Pressed state is carried by aria-pressed, so the styling and the
-   accessibility name cannot drift apart. */
-/* The system's segmented control: a pill track in the muted fill, and the
-   chosen segment lifted onto the raised surface with the small shadow - the
-   one resting shadow the system allows, because the segment floats. */
-.segmented {
-  display: inline-flex;
-  gap: 2px;
-  padding: 2px;
-  border-radius: var(--radius-pill);
-  background: var(--c-fill);
-}
-.segmented > button {
-  font: inherit;
-  font-size: calc(15px * var(--type-scale));
-  padding: var(--s-1) var(--s-4);
-  border: 0;
-  border-radius: var(--radius-pill);
-  background: transparent;
-  color: var(--c-ink-2);
-  cursor: pointer;
-  transition:
-    background-color var(--dur-fx) var(--ease-fx),
-    color var(--dur-fx) var(--ease-fx);
-}
-.segmented > button:hover:not([aria-pressed="true"]) { color: var(--c-ink); }
-.segmented > button[aria-pressed="true"] {
-  background: var(--c-raised);
-  color: var(--c-ink);
-  box-shadow: var(--elev-1);
-}
-/* Out of service but still speaking: a mode that does not apply is dimmed and
-   keeps focus, so its reason stays reachable - the title on hover, the toast
-   on activation. A disabled= button is silent to keyboard and screen reader
-   both, which is how a control's explanation goes unread. */
-.segmented > button[aria-disabled="true"],
-.segmented > button[aria-disabled="true"]:hover {
-  opacity: 0.45;
-  cursor: default;
-  background: transparent;
-  color: var(--c-ink-2);
-}
-
-/* -------------------------------- toast ---------------------------------- */
-
-/* Transient, and never the only place something is said. Failures also land on
-   the row they belong to; this is the acknowledgement, not the record. */
-#toast {
-  position: fixed;
-  left: 50%;
-  bottom: var(--s-5);
-  transform: translate(-50%, calc(100% + var(--s-6)));
-  display: flex;
-  align-items: center;
-  gap: var(--s-3);
-  max-width: min(90vw, 520px);
-  padding: var(--s-3) var(--s-4);
-  border: 1px solid var(--c-line);
-  border-radius: var(--radius);
-  background: var(--c-raised);
-  color: var(--c-ink);
-  box-shadow: var(--elev-2);
-  transition: transform var(--dur-move) var(--ease-move);
-  z-index: 20;
-}
-#toast[data-up="1"] { transform: translate(-50%, 0); }
-/* A receipt must never stand between the pointer and a control: clicks pass
-   through the toast to whatever is under it. Only its own action is real. */
-#toast { pointer-events: none; }
-#toast > #toast-action { flex: none; pointer-events: auto; }
-
-/* ------------------------------ drop overlay ------------------------------ */
-
-/* What letting go will do, said over everything while a drag is in flight.
-   Never interactive - the drop still lands on the window. */
-#drop-say {
-  position: fixed;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  padding: var(--s-3) var(--s-6);
-  border-radius: var(--radius-pill);
-  background: var(--c-inverse);
-  color: var(--c-inverse-ink);
-  font-size: calc(18px * var(--type-scale));
-  font-weight: var(--w-medium);
-  box-shadow: var(--elev-3);
-  pointer-events: none;
-  z-index: 30;
+  #bar button,
+  #dash button,
+  #dash summary,
+  #help button,
+  #alpha-ask button { min-height: var(--s-size-target-min); }
+  #bar button:not(#brand-btn) { min-width: var(--s-size-target-min); }
+  #out-name-field { min-height: var(--s-size-target-min); }
 }
 
 /* ------------------------------- help card ------------------------------- */
@@ -562,49 +177,19 @@ select {
 #help-keys {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  gap: var(--s-2) var(--s-3);
+  gap: var(--s-spacing-3) var(--s-spacing-4);
   align-items: baseline;
-  padding: var(--s-3) 0;
+  margin: 0;
+  font: var(--s-type-body-sm);
+  color: var(--s-color-content-secondary);
 }
 #help-keys > div { display: contents; }
 #help-keys kbd { justify-self: start; }
-#help-keys span { color: var(--c-ink-2); }
+#help-keys > div > :first-child { justify-self: start; white-space: nowrap; }
 
-/* ----------------------- what differs from automatic ---------------------- */
+/* ------------------------------ drop overlay ------------------------------ */
 
-/* The dot: this field is not where the destination would put it. State made
-   visible instead of remembered. */
-.field[data-changed] > label::after {
-  content: "";
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  margin-left: 6px;
-  border-radius: var(--radius-pill);
-  background: var(--c-ink-2);
-  vertical-align: middle;
-}
-
-/* -------------------------------- dialog --------------------------------- */
-
-dialog {
-  max-width: min(92vw, 460px);
-  padding: var(--s-5);
-  border: 1px solid var(--c-line);
-  border-radius: var(--radius-lg);
-  background: var(--c-raised);
-  color: var(--c-ink);
-  box-shadow: var(--elev-3);
-}
-/* The system's backdrop: ink at 30%, no blur. */
-dialog::backdrop { background: var(--overlay-dim); }
-/* A dialog's title is a title, not a section label. */
-dialog h3 {
-  font-family: var(--font-ui);
-  font-size: calc(20px * var(--type-scale));
-  line-height: 1.4;
-  font-weight: var(--w-medium);
-  color: var(--c-ink);
-}
-dialog p { padding: var(--s-3) 0 var(--s-4); color: var(--c-ink-2); }
-dialog .row { display: flex; gap: var(--s-2); justify-content: flex-end; }
+/* The whole-window drag: the system's backdrop with the drop pill over it.
+   Never interactive - the drop still lands on the window. */
+body[data-drag="1"] #drop-scrim { opacity: 1; }
+#drop-say, #drop-scrim { pointer-events: none; }

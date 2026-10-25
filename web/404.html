@@ -14,31 +14,47 @@
 <link rel="icon" href="/favicon.ico" sizes="32x32">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
-<!-- Served by Vercel for any address that has no page. Built from the same
-     sheets and classes as the proof page: the about strip on its own. No
-     analytics script here - a miss is not a visit to the app. -->
 <script src="/js/theme.js"></script>
-<link rel="stylesheet" href="/sarib-tokens.css">
+<link rel="stylesheet" href="/sarib/tokens.css">
+<link rel="stylesheet" href="/sarib/components.css">
+<link rel="stylesheet" href="/sarib/icons.css">
 <link rel="stylesheet" href="/fonts.css">
 <link rel="stylesheet" href="/css/base.css">
 <link rel="stylesheet" href="/css/layout.css">
-<link rel="stylesheet" href="/css/controls.css">
 </head>
 <body>
-<section id="about" aria-labelledby="about-h">
-  <div class="about-inner">
-    <p class="crumb"><a href="/">&larr; Pocketsize — compress images in your browser</a></p>
+<!-- Served by Vercel for any address that has no page. The system's error
+     page: the P1 canvas, a Code meta line, the headline with its one accent
+     word, and the ways onward as link cards. No analytics script here - a
+     miss is not a visit to the app. -->
+<main class="s-page">
+  <div class="doc">
+    <nav class="s-crumbs" aria-label="Breadcrumb">
+      <ol><li><a href="/">Pocketsize</a></li><li aria-current="page">Not found</li></ol>
+    </nav>
 
-    <h1 id="about-h">This page <em>doesn't</em> exist</h1>
+    <header class="s-pagehead">
+      <p class="s-pagehead__meta">404</p>
+      <h1 class="s-hero" id="page-h">This page <em>doesn't</em> exist</h1>
+      <p class="s-lede">There is nothing at this address. It may have moved, or
+         the link may have a typo in it. The compressor itself is one click
+         away, and it works the same as always: your pictures stay on your
+         computer.</p>
+    </header>
 
-    <p>There is nothing at this address. It may have moved, or the link may
-       have a typo in it.</p>
-    <p>The compressor itself is one click away, and it works the same as
-       always: your pictures stay on your computer.</p>
-
-    <p><a class="btn" href="/">Open Pocketsize</a></p>
-    <p class="crumb"><a href="/nothing-is-uploaded">How to check that nothing is uploaded &rarr;</a></p>
+    <div class="doc-links">
+      <a class="s-card s-card--compact" href="/">
+        <span class="s-card__label">The app</span>
+        <span class="s-card__title">Open Pocketsize</span>
+        <span class="s-card__foot"><span class="s-card__meta">Compress images in your browser</span><span class="s-icon s-card__arrow" data-icon="arrow-up-right" aria-hidden="true"></span></span>
+      </a>
+      <a class="s-card s-card--compact" href="/nothing-is-uploaded">
+        <span class="s-card__label">The proof</span>
+        <span class="s-card__title">How to check that nothing is uploaded</span>
+        <span class="s-card__foot"><span class="s-card__meta">About a minute</span><span class="s-icon s-card__arrow" data-icon="arrow-up-right" aria-hidden="true"></span></span>
+      </a>
+    </div>
   </div>
-</section>
+</main>
 </body>
 </html>

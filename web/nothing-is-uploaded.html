@@ -30,92 +30,117 @@
 
 <script src="/js/theme.js"></script>
 <script src="/js/analytics.js" async></script>
-<link rel="stylesheet" href="/sarib-tokens.css">
+<link rel="stylesheet" href="/sarib/tokens.css">
+<link rel="stylesheet" href="/sarib/components.css">
+<link rel="stylesheet" href="/sarib/icons.css">
 <link rel="stylesheet" href="/fonts.css">
 <link rel="stylesheet" href="/css/base.css">
 <link rel="stylesheet" href="/css/layout.css">
 </head>
 <body>
 
-<!-- The proof page: prose only, built from the same sheets and classes as the
-     app's about strip. No app here - the app is one link away; this page
-     exists so the privacy claim never has to be taken on trust. -->
-<section id="about" aria-labelledby="about-h">
-  <div class="about-inner">
-    <p class="crumb"><a href="/">&larr; Pocketsize — compress images in your browser</a></p>
+<!-- The proof page. No app here - the app is one link away; this page exists
+     so the privacy claim never has to be taken on trust. The P1 canvas
+     (s-page) with a reading column: breadcrumbs, the page head, then each of
+     the three checks as a P2 card, then the plain-words prose. -->
+<main class="s-page">
+  <div class="doc">
+    <nav class="s-crumbs" aria-label="Breadcrumb">
+      <ol><li><a href="/">Pocketsize</a></li><li aria-current="page">Nothing is uploaded</li></ol>
+    </nav>
 
-    <h1 id="about-h">"Nothing is uploaded" — and how to check that yourself</h1>
+    <header class="s-pagehead">
+      <h1 class="s-hero" id="page-h">"Nothing is uploaded", and how to <em>check</em> that yourself</h1>
+      <p class="s-lede">Every image tool says it cares about your privacy. Almost
+         all of them still send your picture to a server to do the work.
+         Pocketsize does not: the compression runs inside your browser, on your
+         own computer. Because that claim is worthless as words alone, this page
+         shows you three ways to verify it, each in about a minute, none
+         requiring any technical background beyond pressing a key.</p>
+    </header>
 
-    <p>Every image tool says it cares about your privacy. Almost all of them
-       still send your picture to a server to do the work. Pocketsize does
-       not — the compression runs inside your browser, on your own computer —
-       and because that claim is worthless as words alone, this page shows
-       you three ways to verify it, each in about a minute, none requiring
-       any technical background beyond pressing a key.</p>
+    <div class="doc-steps">
+      <section class="s-card" aria-labelledby="step-1">
+        <p class="s-card__label">Check 1</p>
+        <h2 class="s-card__title" id="step-1">Watch the network</h2>
+        <div class="s-prose">
+          <p>Open <a href="/">Pocketsize</a>, then press <code>F12</code> (or
+             right-click the page and choose "Inspect") and click the
+             <strong>Network</strong> tab. This panel shows every single thing a
+             page sends or receives, and it cannot be fooled. Now drop a photo in
+             and compress it. What you will see: the page downloading its own
+             machinery (files ending in <code>.js</code>, <code>.css</code>,
+             <code>.wasm</code>), a few small requests to
+             <code>e.syedsarib.com</code> (our usage counter, explained below),
+             and your photo appearing nowhere. No upload, no request carrying your
+             file or its name. Click one of the counter's requests and you will see
+             what it carries: that a page was visited, and totals such as how many
+             pictures were done and how many bytes were saved. There is nothing
+             else to send: the encoders themselves were downloaded to your machine,
+             and your picture never leaves it.</p>
+        </div>
+      </section>
 
-    <h2>1. Watch the network</h2>
-    <p>Open <a href="/">Pocketsize</a>, then press <code>F12</code> (or
-       right-click the page and choose "Inspect") and click the
-       <strong>Network</strong> tab — this panel shows every single thing a
-       page sends or receives, and it cannot be fooled. Now drop a photo in
-       and compress it. What you will see: the page downloading its own
-       machinery (files ending in <code>.js</code>, <code>.css</code>,
-       <code>.wasm</code>), a few small requests to
-       <code>e.syedsarib.com</code> — our usage counter, explained below —
-       and your photo appearing nowhere. No upload, no request carrying your
-       file or its name. Click one of the counter's requests and you will see
-       what it carries: that a page was visited, and totals such as how many
-       pictures were done and how many bytes were saved. There is nothing
-       else to send: the encoders themselves were downloaded to your machine,
-       and your picture never leaves it.</p>
+      <section class="s-card" aria-labelledby="step-2">
+        <p class="s-card__label">Check 2</p>
+        <h2 class="s-card__title" id="step-2">Read the rule that limits where the page can send anything</h2>
+        <div class="s-prose">
+          <p>Not uploading is a choice; being <em>unable</em> to send things to a
+             stranger is a guarantee, and Pocketsize ships with it. Every page is
+             delivered with a security header called a Content Security Policy
+             that your browser itself enforces. Ours says, among other things:</p>
+          <pre class="s-codeblock"><code>default-src 'none'; connect-src 'self' https://e.syedsarib.com; form-action 'none'</code></pre>
+          <p>In plain words: this page may talk to its own address to fetch its own
+             files, and to one other address, <code>e.syedsarib.com</code>, our
+             usage counter, and to nowhere else, ever. If the code tried to send
+             your picture to any other address (because of a bug, a compromise,
+             or a change of heart), <strong>the browser would block the
+             attempt</strong>. For the counter's one address, the guarantee is the
+             code itself, which is open and short (<code>js/analytics.js</code>),
+             and the Network panel, where every request it sends can be read. You
+             can read the header itself in the same panel: click the first request,
+             look under "Response Headers" for
+             <code>content-security-policy</code>.</p>
+        </div>
+      </section>
 
-    <h2>2. Read the rule that limits where the page can send anything</h2>
-    <p>Not uploading is a choice; being <em>unable</em> to send things to a
-       stranger is a guarantee, and Pocketsize ships with it. Every page is
-       delivered with a security header called a Content Security Policy
-       that your browser itself enforces. Ours says, among other things:</p>
-    <p><code>default-src 'none'; connect-src 'self' https://e.syedsarib.com; form-action 'none'</code></p>
-    <p>In plain words: this page may talk to its own address to fetch its own
-       files, and to one other address — <code>e.syedsarib.com</code>, our
-       usage counter — and to nowhere else, ever. If the code tried to send
-       your picture to any other address — because of a bug, a compromise,
-       or a change of heart — <strong>the browser would block the
-       attempt</strong>. For the counter's one address, the guarantee is the
-       code itself, which is open and short (<code>js/analytics.js</code>),
-       and the Network panel, where every request it sends can be read. You
-       can read the header itself in the same panel: click the first request,
-       look under "Response Headers" for
-       <code>content-security-policy</code>.</p>
+      <section class="s-card" aria-labelledby="step-3">
+        <p class="s-card__label">Check 3</p>
+        <h2 class="s-card__title" id="step-3">Unplug the internet</h2>
+        <div class="s-prose">
+          <p>The simplest proof of all. Visit Pocketsize once, then turn on
+             airplane mode or pull the network cable, and keep compressing. The
+             whole compressor, encoders included, keeps working with no connection
+             at all, because after your first visit it lives on your device. A tool
+             that uploaded your pictures could not do this.</p>
+        </div>
+      </section>
+    </div>
 
-    <h2>3. Unplug the internet</h2>
-    <p>The simplest proof of all. Visit Pocketsize once, then turn on
-       airplane mode or pull the network cable — and keep compressing. The
-       whole compressor, encoders included, keeps working with no connection
-       at all, because after your first visit it lives on your device. A tool
-       that uploaded your pictures could not do this.</p>
+    <section class="s-prose doc-prose" aria-labelledby="we-see">
+      <h2 class="s-h3" id="we-see">What we do see</h2>
+      <p>Honesty cuts both ways, so here is the whole picture. Like any
+         website, the server that hands you the app sees the ordinary request
+         for the app itself: the visit. And the page sends privacy-respecting
+         usage analytics to <code>e.syedsarib.com</code>: which pages were
+         visited and where clicks landed, plus anonymous totals such as how
+         many images were compressed, how many megabytes were saved, which
+         formats were involved and how long it took. That is how we learn
+         whether Pocketsize is useful. It never sends your pictures, their
+         names, or what is in them: session recordings hide every word on
+         screen and block the parts that show your files outright. The
+         security policy above forbids every other address.</p>
 
-    <h2>What we do see</h2>
-    <p>Honesty cuts both ways, so here is the whole picture. Like any
-       website, the server that hands you the app sees the ordinary request
-       for the app itself — the visit. And the page sends privacy-respecting
-       usage analytics to <code>e.syedsarib.com</code>: which pages were
-       visited and where clicks landed, plus anonymous totals such as how
-       many images were compressed, how many megabytes were saved, which
-       formats were involved and how long it took. That is how we learn
-       whether Pocketsize is useful. It never sends your pictures, their
-       names, or what is in them: session recordings hide every word on
-       screen and block the parts that show your files outright. The
-       security policy above forbids every other address.</p>
-
-    <h2>The code is open</h2>
-    <p>Everything this page claims can be checked a fourth way: by reading
-       the code. Pocketsize is open source —
-       <a href="https://github.com/SyedSaribSultan/pocketsize" target="_blank"
-          rel="noopener">source &amp; licence on GitHub</a> — and the same
-       engine ships as a command line for folders and scripts:
-       <code>pip install pocketsize</code>.</p>
+      <h2 class="s-h3">The code is open</h2>
+      <p>Everything this page claims can be checked a fourth way: by reading
+         the code. Pocketsize is open source
+         (<a href="https://github.com/SyedSaribSultan/pocketsize" target="_blank"
+          rel="noopener">source and licence on GitHub</a>), and the same
+         engine ships as a command line for folders and scripts:
+         <code>pip install pocketsize</code>.</p>
+    </section>
   </div>
-</section>
+</main>
 
 </body>
 </html>

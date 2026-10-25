@@ -94,11 +94,11 @@ Several things are generated from a source of truth and committed, because
 python tools/gen_ss2_module.py      --check   # web/ss2.module.js
 python tools/gen_seo_pages.py       --check   # the use-case pages + sitemap
 python tools/gen_fonts.py           --check   # web/fonts.css + the woff2 files
-python tools/gen_tokens_subset.py   --check   # web/sarib-tokens.css
+node tools/sarib-check.mjs .                  # web/sarib/ matches sarib-design.lock.json
 ```
 
 Drop `--check` to rewrite them. **Never edit the outputs.** Change the source
-and re-run. `gen_seo_pages`, `gen_fonts` and `gen_tokens_subset` are each gated
+and re-run. `gen_seo_pages` and `gen_fonts` are each gated
 by a test inside the suite (`test_seo_pages.py`, `test_design_system.py`), so a
 stale output fails the build. **`gen_ss2_module` has a CI step but no test**,
 which by this project's own rule makes it a convention rather than a guarantee
@@ -112,7 +112,7 @@ It is now the reference itself, and is edited directly.
 | `web/ss2.module.js` | `web/ss2.js` | `tools/gen_ss2_module.py` |
 | `web/<slug>.html` + `web/sitemap.xml` | `web/index.html` | `tools/gen_seo_pages.py` |
 | `web/fonts.css`, `web/fonts/*.<hash>.woff2`, font preloads, `web/sw.js` precache | `tools/fonts.json` | `tools/gen_fonts.py` |
-| `web/sarib-tokens.css` | `vendor/sarib-tokens.css` (verbatim copy of `sarib-design/tokens.css`) | `tools/gen_tokens_subset.py` |
+| `web/sarib/` (tokens, components, icons) + `sarib-design.lock.json` | the sibling repo `sarib-design` (its `npm run build`) | `node ../sarib-design/scripts/sync.mjs . --target web/sarib` |
 
 `web/ss2.module.js` is there for a reason worth knowing before you are tempted
 to "simplify" it away. The image worker is a classic worker and pulls the metric
@@ -131,10 +131,11 @@ reference within an hour of being created.
 
 ## One design system, and one set of motion values
 
-The app renders from the **Sarib design system** (syedsarib.com): the pruned
-token sheet `web/sarib-tokens.css`, aliased by `web/css/base.css`. Nothing
-outside base.css declares a colour of its own, and base.css reads only `--s-*`
-tokens.
+The app renders from the **Sarib design system** (syedsarib.com), vendored
+whole under `web/sarib/`: every control is one of its canonical `s-`
+components, and the app's sheets only place them and read `--s-*` tokens.
+Nothing outside base.css declares a colour of its own, and no app selector
+names an `.s-*` class (`tools/sarib-check.mjs` fails if one does).
 
 ```bash
 node tests/web/verify_tokens.mjs     # static: weight ceiling + faces on disk

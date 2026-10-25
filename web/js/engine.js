@@ -398,7 +398,7 @@ export function cancelAll() {
     item.frac = 0;
   }
   batchActive = false;
-  toast(`Stopped — ${stopping.length} image${stopping.length === 1 ? "" : "s"} left uncompressed`);
+  toast(`Stopped. ${stopping.length} image${stopping.length === 1 ? "" : "s"} left uncompressed`);
   scheduleRender();
 }
 
@@ -489,8 +489,8 @@ function onWorkerMessage(slot, msg) {
       item.stale = false;
       const left = msg.total - msg.done - 1;
       item.progress = left > 0
-        ? `Here's the ${fmtLabel(c.format)} — still trying ${left} more way${left === 1 ? "" : "s"} in the background.`
-        : `Here's the ${fmtLabel(c.format)} — finishing up.`;
+        ? `Here's the ${fmtLabel(c.format)}, still trying ${left} more way${left === 1 ? "" : "s"} in the background.`
+        : `Here's the ${fmtLabel(c.format)}. Finishing up.`;
     }
     scheduleRender();
     return;

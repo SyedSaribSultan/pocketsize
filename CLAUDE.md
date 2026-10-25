@@ -29,18 +29,23 @@ improvise a UX decision mid-implementation.**
 All UI in both interfaces is built strictly from the design system — the
 vanilla-stack equivalent of "only use `@/components/ui`":
 
-1. **One place for values.** Raw colours (`#hex`, `rgb()`, `hsl()`) exist in
-   exactly two files: `web/sarib-tokens.css` (the Sarib design system's
-   palette, generated) and
-   `web/css/base.css` (the named vocabulary, including the deliberate
-   over-the-photograph constants `--c-checker-*` / `--c-over-*`). Every other
-   sheet, and the desktop `<style>` block, consumes names only.
-   Machine-enforced: `test_design_system.test_only_base_defines_colour_literals`.
-2. **No ad-hoc primitives.** A control is a central class (`.btn`, `.field`,
-   `.chips`, …) from the region sheets. A missing pattern gets a class added
-   centrally — never a one-off style on an element, never inline `style=`
-   (the CSP blocks it in production anyway; the design-system test blocks it
-   before that).
+1. **One place for values.** The values are the Sarib design system's,
+   vendored verbatim under `web/sarib/` by `sarib-design/scripts/sync.mjs`
+   and hash-locked in `sarib-design.lock.json` (never edit those files; change
+   sarib-design and re-sync). Raw colours exist only there and in
+   `web/css/base.css` (the over-the-photograph constants). Every app sheet
+   reads `--s-*` tokens directly; there is no private alias layer.
+   Machine-enforced: `test_design_system` (lock hashes, aliases, colour
+   literals) and `tools/sarib-check.mjs` (a vendored copy of sarib-design's
+   check).
+2. **No ad-hoc primitives.** A control is a canonical `s-` component from
+   `web/sarib/components.css` (`s-btn`, `s-field`, `s-switch`, `s-seg`,
+   `s-row`, `s-card`, `s-drop`, `s-toolbar`, `s-dialog`, `s-toast`, ...),
+   used as shipped. App CSS may place them (grid, gap, width) but never
+   restyle them: no app selector may name an `.s-*` class (the check fails),
+   and a variant needs a written reason in `sarib.allow.json`. A missing
+   component is added in sarib-design first, then synced. Never inline
+   `style=` (the CSP blocks it in production anyway).
 3. **No inline executable script.** The only inline `<script>` allowed in
    `web/index.html` is the JSON-LD data block (never executed; gate:
    `test_the_page_carries_no_inline_executable_script`).
@@ -60,10 +65,12 @@ vanilla-stack equivalent of "only use `@/components/ui`":
   - `tools/gen_seo_pages.py` — `web/index.html` → use-case pages + `web/sitemap.xml`
   - `tools/gen_fonts.py` — `tools/fonts.json` → `web/fonts.css`, content-hashed
     `web/fonts/*.woff2`, font preloads, `web/sw.js` precache
-  - `tools/gen_tokens_subset.py` — `vendor/sarib-tokens.css` → `web/sarib-tokens.css`
-- The design system is the Sarib system (syedsarib.com; source
-  `sarib-design/tokens.css`, vendored verbatim). HeyOz tokens were retired
-  2026-10-25 and must not come back.
+- The design system is the Sarib system (syedsarib.com), vendored whole
+  under `web/sarib/` (tokens, components, icons) from the sibling repo
+  `sarib-design`: `node ../sarib-design/scripts/sync.mjs . --target web/sarib`,
+  then re-copy `scripts/check.mjs` to `tools/sarib-check.mjs`. New icons the
+  page paints must be added to `web/sw.js`'s precache (a test holds it).
+  HeyOz tokens were retired 2026-10-25 and must not come back.
 - Any change that affects output needs a measurement at **matched perceptual
   quality** (see CONTRIBUTING.md). Never validate a metric change with that
   same metric.

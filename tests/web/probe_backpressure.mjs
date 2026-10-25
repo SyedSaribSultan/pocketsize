@@ -95,12 +95,12 @@ try {
      twenty-four. */
   const list = await pg.evaluate(async () => {
     const el = document.getElementById("queue-list");
-    const rows = [...el.querySelectorAll(".row")];
+    const rows = [...el.querySelectorAll(".s-row")];
     const last = rows[rows.length - 1];
     const beforeScroll = {
       zeroBoxes: rows.filter((r) => r.getBoundingClientRect().height === 0).length,
       scrollH: Math.round(el.scrollHeight),
-      offscreenText: last.querySelector(".sub").textContent,
+      offscreenText: last.querySelector(".s-row__sub").textContent,
     };
     el.scrollTop = el.scrollHeight;
     await new Promise((r) => requestAnimationFrame(r));

@@ -62,7 +62,8 @@ function onFormatPin() {
   // The buttons state their consequence, count included: "Keep 2 as PNG" is a
   // decision; "Keep those as PNG" is a hope.
   const n = alphaItemCount();
-  setText($("alpha-keep"), `Keep ${n === 1 ? "it" : `all ${n}`} as PNG`);
+  setText($("alpha-keep").querySelector(".s-btn__label"),
+    `Keep ${n === 1 ? "it" : `all ${n}`} as PNG`);
   $("alpha-ask").showModal();
 }
 
@@ -112,6 +113,9 @@ function reflectTheme() {
   const btn = $("theme-btn");
   // The word, not the whole button: the glyph beside it stays put.
   setText($("theme-word"), `Theme: ${THEME_WORD[cur]}`);
+  // The glyph shows the theme actually painted: the sun or the moon.
+  const dark = document.documentElement.dataset.theme === "dark";
+  $("theme-icon").dataset.icon = dark ? "moon" : "sun";
   btn.title = `Switch to ${THEME_WORD[THEME_NEXT[cur]]}`;
   btn.setAttribute("aria-label",
     `Theme: ${THEME_WORD[cur]}. Click to switch to ${THEME_WORD[THEME_NEXT[cur]]}.`);
@@ -193,6 +197,13 @@ function bindIntake() {
      overlay says what letting go will do, and to how many - feedforward for
      the gesture in flight. */
   let dragDepth = 0;
+  /* The system's whole-window drag: the backdrop, the raised drop pill, and
+     the dropzone itself (when it is on screen) in its drag-over colours. */
+  const showDrop = (on) => {
+    show($("drop-say"), on);
+    $("drop-scrim").toggleAttribute("data-open", on);
+    $("queue-empty").toggleAttribute("data-dragover", on);
+  };
   addEventListener("dragenter", (e) => {
     if (!e.dataTransfer?.types?.includes("Files")) return;
     dragDepth++;
@@ -208,8 +219,8 @@ function bindIntake() {
     /* The fallback runs when a drag exposes no usable item types at all, so it
        cannot name what is coming - "files" is the honest word there, and the
        true count and nouns arrive above whenever the browser tells us. */
-    setText($("drop-say"), n ? `Drop to add ${noun}` : "Drop to add files");
-    show($("drop-say"), true);
+    setText($("drop-say-text"), n ? `Drop to add ${noun}` : "Drop to add files");
+    showDrop(true);
   });
   addEventListener("dragover", (e) => {
     if (e.dataTransfer?.types?.includes("Files")) e.preventDefault();
@@ -218,7 +229,7 @@ function bindIntake() {
     if (--dragDepth <= 0) {
       dragDepth = 0;
       delete document.body.dataset.drag;
-      show($("drop-say"), false);
+      showDrop(false);
     }
   });
   addEventListener("drop", async (e) => {
@@ -226,7 +237,7 @@ function bindIntake() {
     e.preventDefault();
     dragDepth = 0;
     delete document.body.dataset.drag;
-    show($("drop-say"), false);
+    showDrop(false);
     addFiles(await filesFromDataTransfer(e.dataTransfer));
   });
 
@@ -295,13 +306,13 @@ function bindQueue() {
        sit on, without moving the selection to it. */
     const act = e.target.closest(".row-act");
     if (act) {
-      const id = act.closest(".row")?.dataset.id;
+      const id = act.closest("[role=option]")?.dataset.id;
       if (!id) return;
       if (act.classList.contains("rm")) removeItems([id]);
       else requeue([id]);
       return;
     }
-    const row = e.target.closest(".row");
+    const row = e.target.closest("[role=option]");
     if (row) pick(row.dataset.id);
   });
 
@@ -436,6 +447,9 @@ function bindStage() {
    element in this shell (see #batch in layout.css). A ResizeObserver keeps it
    true through wrapping, theme changes and font loading alike. */
 function measureBar() {
+  /* Receipts rise above the stage's own bottom toolbar rather than sitting on
+     it: the system's toast region takes its lift from --s-toast-offset. */
+  $("toast").style.setProperty("--s-toast-offset", "72px");
   const bar = $("bar");
   const write = () => document.documentElement.style.setProperty(
     "--bar-h", `${Math.round(bar.getBoundingClientRect().height)}px`);
@@ -622,16 +636,16 @@ setBatchEndHandler(() => {
   if (!t.ready) return;
   /* The outcome, framed as the person's own gain - this is the moment the
      product's value is remembered by. */
-  toast(`Done — ${t.ready} picture${t.ready === 1 ? "" : "s"} ready, saved you `
+  toast(`Done. ${t.ready} picture${t.ready === 1 ? "" : "s"} ready, saved you `
     + `${human(t.saved)}. Drag the line to check any of them.`);
   /* And the product's superpower, taught exactly once, at the first moment it
      is usable. */
-  hintOnce("flick", "Tip: hold Space to flick between before and after — "
+  hintOnce("flick", "Tip: hold Space to flick between before and after. It is "
     + "the fastest way to spot a difference.");
   /* Installing is offered once, and only after the product has shown its
      worth - a prompt before value is a prompt declined. */
   if (installable) {
-    hintOnce("install", "Install Pocketsize? It works fully offline — "
+    hintOnce("install", "Install Pocketsize? It works fully offline, and "
       + "your pictures never leave your device.", {
       label: "Install",
       onAction: () => { installable.prompt(); installable = null; },
@@ -663,7 +677,7 @@ if ("serviceWorker" in navigator) {
     /* A silent superpower earns no trust: the first time the offline layer
        finishes warming, it is announced - exactly once. */
     const announce = () => hintOnce("offline",
-      "Ready to work offline — this whole app now runs without internet.");
+      "Ready to work offline. This whole app now runs without internet.");
     if (navigator.serviceWorker.controller) return;   // already installed before
     const sw = reg.installing || reg.waiting;
     if (!sw) return;

@@ -1,242 +1,99 @@
-/* The queue: every image in the run, and which one the stage is showing.
+/* The files card: every image in the run, and which one the stage is showing.
  *
- * It is a listbox, not a set of cards. Each row carries four facts in a fixed
- * order - a thumbnail, the name, what it weighs now, and how much that saved -
- * so the column of numbers can be read down without reading any row. A row that
- * is still working says what it is doing in place of the numbers it does not
- * have yet, rather than showing a placeholder where a result will later appear.
+ * A listbox of the system's large list rows (s-row s-row--lg): a 40px
+ * thumbnail, the name over what happened to it, and the weight it has now at
+ * the end, so the column of sizes reads down without reading any row. The
+ * row on the stage is the system's "current" row - the pressed fill - and the
+ * row's own actions are ghost icon buttons revealed by attention. A row that
+ * is still working says what it is doing, with a progress track under it.
  */
 
-/* First in the sidebar now - the pictures are step one of the story - so the
-   dividing rule belongs to the plan below, not to this region's top edge. */
+/* The section: its label, then either the dropzone or the list card. */
 #queue-sec {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto auto;
-  min-height: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-spacing-3);
+  flex: 1 1 auto;
+  min-height: 200px;
+  height: var(--queue-h, auto);
 }
+/* A dragged height is a fixed height; an empty queue sits compact, so the
+   plan follows immediately instead of after a region-sized void. */
+html[style*="--queue-h"] #queue-sec,
+#side:has(#queue-list[hidden]) #queue-sec { flex: 0 0 auto; height: auto; }
 
-#plan-sec { border-top: 1px solid var(--c-line); }
+/* The list card is absent while there is nothing in it: no empty frame
+   around nothing. */
+#queue-card:has(> #queue-list[hidden]) { display: none; }
+#queue-card { flex: 1 1 auto; min-height: 0; }
 
 #queue-list {
-  overflow-y: auto;
+  flex: 1 1 auto;
   min-height: 0;
-  padding: 0 var(--s-2) var(--s-2);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
-#queue-list:focus-visible { outline-offset: -2px; }
 
-.row {
-  display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) auto;
-  grid-template-rows: auto auto;
-  align-items: center;
-  gap: 0 var(--s-3);
-  width: 100%;
-  padding: var(--s-2);
-  border: 1px solid transparent;
-  border-radius: var(--radius);
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  /* Off-screen rows cost nothing to style, lay out or paint.
-   *
-   * The list is not virtualized - rows are real elements, reconciled by id -
-   * so at two hundred images the browser was doing layout and paint work for
-   * roughly two hundred rows to show the twenty that fit. This hands that
-   * decision to the engine: a row outside the scrollport skips its own
-   * rendering entirely until it approaches.
-   *
-   * The intrinsic size is measured, not guessed, and it is the WORKING height
-   * rather than the settled one: a row is 70px while its progress track is
-   * revealed and 64px afterwards, and reserving the smaller of the two would
-   * make the scrollbar creep as a batch finished. `auto` means the real height
-   * is remembered once a row has been rendered, so the estimate only ever
-   * matters for rows nobody has scrolled to yet. */
+/* Off-screen rows cost nothing to style, lay out or paint: at two hundred
+   images the browser was doing the work for every row to show the twenty
+   that fit. The intrinsic size is the WORKING height (with its progress
+   track), so the scrollbar does not creep as a batch finishes. */
+#queue-list > [role="option"] {
   content-visibility: auto;
-  contain-intrinsic-size: auto 70px;
-  transition:
-    background-color var(--dur-fx) var(--ease-fx),
-    border-color var(--dur-fx) var(--ease-fx);
-}
-/* The system's card hover: a fill change, no shadow, no lift. */
-.row:hover { background: var(--c-fill); }
-
-/* The one on the stage: lifted onto the raised surface inside a stronger
-   hairline - a shape change, not colour alone - and aria-selected carries the
-   same fact to anything not looking at pixels. Ink, not red: the red on this
-   screen belongs to the one primary action. */
-.row[aria-selected="true"],
-.row[aria-selected="true"]:hover {
-  background: var(--c-raised);
-  border-color: var(--c-line-strong);
-}
-
-.row > .thumb {
-  grid-row: 1 / span 2;
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-sm);
-  object-fit: cover;
-  background: var(--c-fill);
-}
-/* Not decoded yet: a quiet shimmer says "coming", where a blank square says
-   "broken". The global reduced-motion rule in base.css stills it. */
-.row > .thumb:not([src]) {
-  background-image: linear-gradient(100deg,
-    var(--c-fill) 40%, var(--c-raised) 50%, var(--c-fill) 60%);
-  background-size: 200% 100%;
-  animation: thumb-wait 1.4s linear infinite;
-}
-@keyframes thumb-wait {
-  from { background-position: 120% 0; }
-  to { background-position: -80% 0; }
-}
-
-/* The standing invitation under the list. */
-#queue-hint {
-  padding: var(--s-1) var(--s-4) var(--s-2);
-  font-size: calc(15px * var(--type-scale));
-  text-align: center;
+  contain-intrinsic-size: auto 64px;
 }
 
 /* Middle truncation: the head gives way, the tail - the distinguishing
    characters and the extension - survives at any width. */
-.row > .name {
-  grid-column: 2;
-  display: flex;
-  min-width: 0;
-  white-space: nowrap;
-}
-.row .name-head {
-  flex: 0 1 auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-.row .name-tail { flex: none; }
+.name { display: flex; min-width: 0; white-space: nowrap; }
+.name-head { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.name-tail { flex: none; }
 
-/* What this row is holding, when that is not obvious from the thumbnail: a
-   video, and how long it runs. It sits after the name and never gives way to
-   truncation, because "why is this one taking two minutes" is answered here
-   and nowhere else on the row. */
-/* The row's own actions, revealed by attention: hover or focus on a pointer,
-   always present where there is no hover to have. They sit over the size
-   column so nothing jumps when they appear. */
-.row > .row-acts {
-  grid-column: 3;
-  grid-row: 1 / span 2;
-  display: none;
+/* The trailing column: the weight now, and the row's actions, which take the
+   same place while the pointer is on the row so nothing jumps. */
+.row-end {
+  display: grid;
+  flex-shrink: 0;
   align-items: center;
-  gap: var(--s-1);
-  justify-self: end;
+  justify-items: end;
 }
-.row:hover > .row-acts,
-.row:focus-within > .row-acts { display: inline-flex; }
-.row:hover > .now,
-.row:focus-within > .now { visibility: hidden; }
-/* No hover to have: the actions get their own column and the size stays. */
-@media (pointer: coarse) {
-  .row { grid-template-columns: 40px minmax(0, 1fr) auto auto; }
-  .row > .row-acts { display: inline-flex; grid-column: 4; grid-row: 1 / span 2; }
-  .row > .now { visibility: visible; }
-  .row:hover > .now { visibility: visible; }
-  .row-act { width: var(--s-target); }
-}
-.row-act {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border: 1px solid var(--c-line);
-  border-radius: var(--radius-pill);
-  background: var(--c-field);
-  color: var(--c-ink-2);
-  cursor: pointer;
-  transition:
-    color var(--dur-fx) var(--ease-fx),
-    border-color var(--dur-fx) var(--ease-fx);
-}
-.row-act:hover { color: var(--c-ink); border-color: var(--c-line-hover); }
-.row-act.rm:hover { color: var(--c-bad); border-color: var(--c-bad); }
-
-/* The weight after compressing, right-aligned so the column reads as a column */
-.row > .now {
-  grid-column: 3;
-  grid-row: 1;
-  font-size: calc(16px * var(--type-scale));
-  color: var(--c-ink-2);
+.row-end > * { grid-area: 1 / 1; }
+[role="option"]:is(:hover, :focus-within) .row-end > .now { visibility: hidden; }
+/* No hover to have: the actions get their own place and the size stays. */
+@media (hover: none) {
+  .row-end { display: flex; gap: var(--s-spacing-3); }
+  [role="option"]:is(:hover, :focus-within) .row-end > .now { visibility: visible; }
 }
 
-/* Second line: either the saving, or what this row is doing right now. */
-.row > .sub {
-  grid-column: 2 / span 2;
-  grid-row: 2;
-  font-size: calc(16px * var(--type-scale));
-  color: var(--c-ink-3);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.row > .sub.good { color: var(--c-good); }
-.row > .sub.bad { color: var(--c-bad); }
+/* Per-row progress, under the words it belongs to, while there is progress
+   to show. */
+.row-track { margin-top: var(--s-spacing-2); }
 
-/* Per-row progress, under the row it belongs to. */
-.row > .track {
-  grid-column: 1 / span 3;
-  grid-row: 3;
-  height: 2px;
-  margin-top: var(--s-1);
-  background: var(--c-line);
-  border-radius: var(--radius-pill);
-  overflow: hidden;
-}
-/* A transform, not a width - see the note on #batch in layout.css. */
-.row > .track > i {
-  display: block;
-  height: 100%;
-  width: 100%;
-  transform: scaleX(0);
-  transform-origin: 0 50%;
-  background: var(--c-ink);
-  transition: transform 0.2s linear;
-}
-
-/* ------------------------------ empty state ------------------------------ */
-
-/* What to do, and nothing else. No headline, no pitch, no format badges - the
-   one sentence that tells a first-time visitor which action starts the work.
-   It is also the drop target, which is why it fills its region rather than
-   sitting centred in a box of its own.
-
-   A flex column, not a grid: a grid's auto column is sized by max-content, so
-   the unwrapped width of one sentence propagated up through the sidebar's own
-   column and pushed every region under the stage. Flex children get exactly
-   the region's width and the sentences wrap inside it. */
-#queue-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--s-3);
-  padding: var(--s-6) var(--s-4);
+/* The standing invitation under the list. */
+#queue-hint {
+  padding: var(--s-spacing-3) var(--s-spacing-4) var(--s-spacing-1);
   text-align: center;
-  color: var(--c-ink-3);
 }
-#queue-empty > * { max-width: 100%; }
 
-/* The whole window accepts a drop. Saying so only while something is being
-   dragged keeps the affordance out of the way the rest of the time. */
-body[data-drag="1"] #side { outline: 2px dashed var(--c-line-strong); outline-offset: -4px; }
-
+/* The run's totals, inside the card under a divider: Code figures, muted so
+   they can be read, the saving after the sizes. */
 #queue-foot {
-  padding: var(--s-2) var(--s-4);
-  border-top: 1px solid var(--c-line);
-  font-size: calc(16px * var(--type-scale));
-  color: var(--c-ink-3);
   display: flex;
-  align-items: center;
-  gap: var(--s-2);
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-spacing-1) var(--s-spacing-4);
+  margin-top: var(--s-spacing-3);
+  padding: var(--s-spacing-4) var(--s-spacing-4) var(--s-spacing-1);
+  border-top: var(--s-stroke-width-2) solid var(--s-color-border-primary);
+  font: var(--s-type-code-body-sm);
+  color: var(--s-color-content-secondary);
+}
+#t-count { font-family: var(--s-font-family-body); color: var(--s-color-content-primary); }
+
+/* The actions are hidden, not merely transparent, while the row does not
+   have the pointer: an invisible Remove sitting over the size column would
+   take a click meant for the row. */
+@media (hover: hover) {
+  [role="option"]:not(:hover):not(:focus-within) .row-acts { visibility: hidden; }
 }

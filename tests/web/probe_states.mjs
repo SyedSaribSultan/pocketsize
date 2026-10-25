@@ -131,7 +131,7 @@ function installProbes() {
 
   /** The primary action, counted rather than assumed. Two on one screen is two
    *  answers to "what do I do now". */
-  window.__primaries = () => [...document.querySelectorAll(".btn.primary")]
+  window.__primaries = () => [...document.querySelectorAll(".s-btn--brand, .s-btn--primary")]
     .filter(window.__vis).map((e) => e.id || e.getAttribute("class"));
 
   /** Buttons a person could press right now, so "there is a next action" is a
@@ -152,10 +152,10 @@ function installProbes() {
 
   /** What each row actually says. Status and format are data attributes, so this
    *  reads state rather than parsing display copy. */
-  window.__rows = () => [...document.querySelectorAll("#queue-list .row")].map((r) => ({
+  window.__rows = () => [...document.querySelectorAll("#queue-list .s-row")].map((r) => ({
     name: r.querySelector(".name").textContent,
     now: r.querySelector(".now").textContent,
-    sub: r.querySelector(".sub").textContent,
+    sub: r.querySelector(".s-row__sub").textContent,
     format: r.dataset.format,
     state: r.dataset.status,
     right: Math.round(r.getBoundingClientRect().right),

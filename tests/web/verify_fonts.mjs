@@ -71,7 +71,7 @@ try {
       mono: check(fam.mono, 500, 14),
       bodyFamily: getComputedStyle(document.body).fontFamily,
       numFamily: getComputedStyle(document.getElementById("queue-count")).fontFamily,
-      brandFamily: getComputedStyle(document.querySelector("#bar .brand")).fontFamily,
+      brandFamily: getComputedStyle(document.querySelector("#brand-btn")).fontFamily,
       aboutFamily: getComputedStyle(document.getElementById("about-h")).fontFamily,
       labelFamily: getComputedStyle(
         document.querySelector('#plan-fields label[for="target"]')).fontFamily,

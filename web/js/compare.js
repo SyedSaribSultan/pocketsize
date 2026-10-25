@@ -246,7 +246,7 @@ export function setMode(next) {
   show(badge, next !== "split" && !!current());
   setText(badge, next === "after"
     ? "Showing the compressed picture"
-    : "Difference — brighter means more change");
+    : "Difference: brighter means more change");
   if (next === "diff") ensureDiff();
   applySplit();
 }
@@ -374,7 +374,7 @@ export function renderStage() {
     show($("stage-empty"), true);
     show($("stage-choose"), false);
     setText($("stage-empty"),
-      `Could not compress this image — ${it.error || "unknown reason"}.`);
+      `Could not compress this image: ${it.error || "unknown reason"}.`);
     return;
   }
 
@@ -416,9 +416,21 @@ export function renderStage() {
         ? Math.round((1 - it.newBytes / it.originalBytes) * 100) : 0;
       const shrunk = it.outW && (it.outW !== it.width || it.outH !== it.height)
         ? ` · shrunk to ${it.outW}×${it.outH}` : "";
-      setText($("s-saved"), (pct > 0
-        ? `−${pct}% · ${fmtLabel(it.fmt)}`
-        : `no saving · ${fmtLabel(it.fmt)}`) + shrunk);
+      /* Only the delta takes the success colour; the format and the
+         disclosure stay in the line's own ink, the same size, in one read. */
+      const delta = pct > 0 ? `−${pct}%` : "";
+      const rest = (pct > 0 ? ` · ${fmtLabel(it.fmt)}` : `no saving · ${fmtLabel(it.fmt)}`) + shrunk;
+      const savedEl = $("s-saved");
+      if (savedEl.textContent !== delta + rest) {
+        if (delta) {
+          const d = document.createElement("span");
+          d.className = "s-delta-good";
+          d.textContent = delta;
+          savedEl.replaceChildren(d, rest);
+        } else {
+          savedEl.textContent = rest;
+        }
+      }
     }
   }
 

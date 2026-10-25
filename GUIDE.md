@@ -395,15 +395,22 @@ The app is drawn in the **Sarib design system** — the visual system of
 syedsarib.com — and only that system. It replaced the HeyOz token layer whole
 on 2026-10-25; nothing of the old layer remains.
 
-* **Source.** `vendor/sarib-tokens.css` is a verbatim copy of `tokens.css` from
-  `sarib-design/` (see its `DESIGN.md`). Do not edit it; re-vendor it.
-* **Shipped.** `web/sarib-tokens.css` is GENERATED from it by
-  `tools/gen_tokens_subset.py`, which drops the kit's drop-in base element
-  styles (the app has its own controls) and prunes the declarations to the
-  tokens the app can reach. `--check` is gated by `test_design_system.py`.
-* **Vocabulary.** `web/css/base.css` is the only sheet that names an `--s-*`
-  token or a raw colour; every other sheet consumes its aliases. Enforced by
-  `TheBrowserAppHasOnePlaceForValues` and `TheAppIsDrawnInTheSaribSystem`.
+* **Source.** `web/sarib/` is the whole system - `tokens.css`,
+  `components.css` (every canonical component as an `s-` class),
+  `icons.css` + `icons/` - copied verbatim from the sibling repo
+  `sarib-design` by its `scripts/sync.mjs` and hash-locked in
+  `sarib-design.lock.json`. Do not edit it; change sarib-design and re-sync.
+* **Components, not look-alikes.** Every control is an `s-` component used
+  as shipped: the app bar, the dropzone, the list rows, the md fields and
+  selects, the switch, the segmented control, the toolbars over the
+  photograph, the dialog, the toast. The app's sheets only place them.
+  `tools/sarib-check.mjs` (a vendored copy of sarib-design's check) fails the
+  tests if an app selector names an `.s-*` class or redefines an `--s-*`
+  token outside `sarib.allow.json`.
+* **Depth.** The system's planes: the app bar is the P0 band, the dashboard
+  the P1 canvas, the files, plan and stage are P2 hairline cards on it, and
+  only what floats over the photograph (P3 toolbars, menus, toasts, dialogs)
+  casts a shadow.
 * **The rules the system brings:** warm neutrals, never a true grey; hairline
   borders and no shadow on resting surfaces (only floating things — the
   selected segment, the bars over the photograph, overlays — cast one); very
@@ -413,7 +420,7 @@ on 2026-10-25; nothing of the old layer remains.
   appearances; weights 400 and 500 only; no all-caps labels.
 * **Over the photograph** the stage tags, the caliper and the checkerboard
   deliberately do not follow the theme; their values are the named
-  `--c-checker-*` / `--c-over-*` constants in base.css.
+  `--c-checker-*` constants in base.css, plus the system's on-image and fixed-white tokens.
 
 ### Typography
 
