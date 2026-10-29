@@ -426,7 +426,7 @@ def _about_section(spec):
     paras = "\n".join(
         f'    <p class="s-lede">{p}</p>' if i == 0 else f"    <p>{p}</p>"
         for i, p in enumerate(spec["paras"]))
-    return f'''<section id="about" aria-labelledby="about-h">
+    return f'''<section id="about" aria-labelledby="about-h" data-scale="site">
   <div class="about-inner s-prose">
     <h2 id="about-h">{spec["h1"]}</h2>
 {paras}
@@ -464,7 +464,7 @@ def render(spec, template):
     url = f"{BASE_URL}/{spec['slug']}"
 
     attrs = "".join(f' {PRESET_ATTRS[k]}="{v}"' for k, v in spec["preset"].items())
-    html = html.replace('<html lang="en">', f'<html lang="en"{attrs}>', 1)
+    html = html.replace('<html lang="en" data-scale="app">', f'<html lang="en" data-scale="app"{attrs}>', 1)
 
     html = re.sub(r"<title>.*?</title>",
                   f"<title>{spec['title']}</title>", html, count=1, flags=re.S)
@@ -492,7 +492,7 @@ def render(spec, template):
     html = re.sub(r'(<h1 class="s-sr-only">)[^<]*',
                   lambda m: m.group(1) + spec["h1"], html, count=1)
 
-    html = re.sub(r'<section id="about" aria-labelledby="about-h">.*?</section>',
+    html = re.sub(r'<section id="about" aria-labelledby="about-h"[^>]*>.*?</section>',
                   _about_section(spec), html, count=1, flags=re.S)
     return html
 

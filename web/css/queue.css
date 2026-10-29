@@ -41,7 +41,7 @@ html[style*="--queue-h"] #queue-sec,
    track), so the scrollbar does not creep as a batch finishes. */
 #queue-list > [role="option"] {
   content-visibility: auto;
-  contain-intrinsic-size: auto 64px;
+  contain-intrinsic-size: auto 56px;
 }
 
 /* Middle truncation: the head gives way, the tail - the distinguishing
