@@ -6,7 +6,7 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
     groups:
       actions:
         patterns: ["*"]
@@ -15,7 +15,7 @@ updates:
   - package-ecosystem: npm
     directory: /tests/web
     schedule:
-      interval: weekly
+      interval: monthly
     groups:
       harness:
         patterns: ["*"]
@@ -25,7 +25,7 @@ updates:
   - package-ecosystem: pip
     directory: /tools
     schedule:
-      interval: weekly
+      interval: monthly
     groups:
       dev-tools:
         patterns: ["*"]
