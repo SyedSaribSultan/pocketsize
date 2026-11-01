@@ -5,11 +5,11 @@
 #
 # Install:  python -m pip install -r tools/requirements-dev.txt -c tools/requirements-dev.constraints.txt
 pillow==13.0.0
-fonttools==4.67.0
+fonttools==4.68.0
 brotli==1.2.1
 zopfli==0.4.3
 numpy==2.5.4
 scipy==1.18.1
 ssimulacra2==0.3.0
-ruff==0.17.2
+ruff==0.17.3
 pillow-avif-plugin==1.6.0
