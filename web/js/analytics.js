@@ -1,13 +1,20 @@
-/* Usage analytics - visits and anonymous totals, never content.
+/* Usage analytics - visits, visitors and run totals, never content.
  *
- * The rule (owner-approved 2026-10-23): count visitors and the SHAPE of a run -
- * how many pictures, how many bytes in and out, which formats, which plan, how
- * long it took. Never a file name, a path, a pixel, a thumbnail or any text a
- * person typed. Pictures never leave the device; this file is the only thing
- * on the page that talks to anything but its own address.
+ * The rule (owner-approved 2026-10-23, widened 2026-11-06): count visitors and
+ * the SHAPE of a run - how many pictures, how many bytes in and out, which
+ * formats, which plan, how long it took. Never a file name, a path, a pixel, a
+ * thumbnail or any text a person typed. Pictures never leave the device; this
+ * file is the only thing on the page that talks to anything but its own address.
  *
- * Events go to PostHog through our own proxy, e.syedsarib.com, the one extra
- * origin the CSP in vercel.json allows. Config follows the shared contract in
+ * Since 2026-11-06 (owner decision) it also loads the shared add-on every
+ * syedsarib.com site uses, https://analytics.syedsarib.com/t/plus.js: the
+ * visitor's device and browser details, their IP address and the network that
+ * owns it (looked up by analytics.syedsarib.com/api/net), whether they look
+ * human, and how long each page was visible and how far it was scrolled.
+ *
+ * Events go to PostHog through our own proxy, e.syedsarib.com; the add-on comes
+ * from analytics.syedsarib.com. Those are the two extra origins the CSP in
+ * vercel.json allows. Config follows the shared contract in
  * the analytics repo (TRACKING.md / posthog-snippet.html), plus hardening for a
  * page whose screen is full of other people's file names:
  *
@@ -60,6 +67,14 @@
           u.searchParams.delete("via");
           history.replaceState(history.state, "", u.pathname + (u.search || "") + u.hash);
         }
+      } catch (e) {}
+      // Add-on (analytics TRACKING.md): device, network, human and time-on-page signals, from one shared file.
+      try {
+        window.posthog = ph;
+        var s = document.createElement("script");
+        s.src = "https://analytics.syedsarib.com/t/plus.js";
+        s.async = true;
+        document.head.appendChild(s);
       } catch (e) {}
     }
   });

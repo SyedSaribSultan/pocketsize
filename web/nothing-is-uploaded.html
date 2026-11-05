@@ -71,13 +71,14 @@
              and compress it. What you will see: the page downloading its own
              machinery (files ending in <code>.js</code>, <code>.css</code>,
              <code>.wasm</code>), a few small requests to
-             <code>e.syedsarib.com</code> (our usage counter, explained below),
-             and your photo appearing nowhere. No upload, no request carrying your
-             file or its name. Click one of the counter's requests and you will see
-             what it carries: that a page was visited, and totals such as how many
-             pictures were done and how many bytes were saved. There is nothing
-             else to send: the encoders themselves were downloaded to your machine,
-             and your picture never leaves it.</p>
+             <code>e.syedsarib.com</code> and <code>analytics.syedsarib.com</code>
+             (our analytics, explained below), and your photo appearing nowhere.
+             No upload, no request carrying your file or its name. Click one of
+             those requests and you will see what it carries: that a page was
+             visited, facts about your device and connection, and totals such as
+             how many pictures were done and how many bytes were saved. Your
+             picture is not in any of them: the encoders themselves were
+             downloaded to your machine, and your picture never leaves it.</p>
         </div>
       </section>
 
@@ -89,15 +90,16 @@
              stranger is a guarantee, and Pocketsize ships with it. Every page is
              delivered with a security header called a Content Security Policy
              that your browser itself enforces. Ours says, among other things:</p>
-          <pre class="s-codeblock"><code>default-src 'none'; connect-src 'self' https://e.syedsarib.com; form-action 'none'</code></pre>
+          <pre class="s-codeblock"><code>default-src 'none'; connect-src 'self' https://e.syedsarib.com https://analytics.syedsarib.com; form-action 'none'</code></pre>
           <p>In plain words: this page may talk to its own address to fetch its own
-             files, and to one other address, <code>e.syedsarib.com</code>, our
-             usage counter, and to nowhere else, ever. If the code tried to send
-             your picture to any other address (because of a bug, a compromise,
-             or a change of heart), <strong>the browser would block the
-             attempt</strong>. For the counter's one address, the guarantee is the
-             code itself, which is open and short (<code>js/analytics.js</code>),
-             and the Network panel, where every request it sends can be read. You
+             files, and to two other addresses, <code>e.syedsarib.com</code> and
+             <code>analytics.syedsarib.com</code>, our analytics, and to nowhere
+             else, ever. If the code tried to send your picture to any other
+             address (because of a bug, a compromise, or a change of heart),
+             <strong>the browser would block the attempt</strong>. For the two
+             analytics addresses, the guarantee is the code itself, which is open
+             (<code>js/analytics.js</code>), and the Network panel, where every
+             request it sends can be read. You
              can read the header itself in the same panel: click the first request,
              look under "Response Headers" for
              <code>content-security-policy</code>.</p>
@@ -121,15 +123,33 @@
       <h2 class="s-h3" id="we-see">What we do see</h2>
       <p>Honesty cuts both ways, so here is the whole picture. Like any
          website, the server that hands you the app sees the ordinary request
-         for the app itself: the visit. And the page sends privacy-respecting
-         usage analytics to <code>e.syedsarib.com</code>: which pages were
-         visited and where clicks landed, plus anonymous totals such as how
-         many images were compressed, how many megabytes were saved, which
-         formats were involved and how long it took. That is how we learn
-         whether Pocketsize is useful. It never sends your pictures, their
-         names, or what is in them: session recordings hide every word on
-         screen and block the parts that show your files outright. The
-         security policy above forbids every other address.</p>
+         for the app itself: the visit. And the page sends analytics to
+         <code>e.syedsarib.com</code> and <code>analytics.syedsarib.com</code>.
+         Here is everything it collects:</p>
+      <ul>
+        <li><strong>What you did on the page:</strong> which pages you visited,
+            where you clicked, how long each page was on screen and how far you
+            scrolled, and a recording of the session with every word on screen
+            hidden.</li>
+        <li><strong>What the app did:</strong> how many images were compressed,
+            how many megabytes were saved, which formats were involved and how
+            long it took.</li>
+        <li><strong>Your device:</strong> browser, operating system, device
+            model, screen and window size, language, time zone, graphics chip,
+            processor cores, memory, connection type, and whether you use dark
+            mode or a touch screen.</li>
+        <li><strong>Your connection:</strong> your IP address, the company that
+            owns your network, and the rough location that IP address points to
+            (city and region).</li>
+        <li><strong>Whether you are a person:</strong> whether the visit looks
+            like a real person or an automated program.</li>
+      </ul>
+      <p>The same visitor is recognised across every site on syedsarib.com.
+         That is how we learn who uses Pocketsize and whether it is useful. It
+         never sends your pictures, their names, or what is in them: session
+         recordings hide every word on screen and block the parts that show
+         your files outright. The security policy above forbids every other
+         address.</p>
 
       <h2 class="s-h3">The code is open</h2>
       <p>Everything this page claims can be checked a fourth way: by reading

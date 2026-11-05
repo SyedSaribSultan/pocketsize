@@ -362,10 +362,11 @@ if you are looking for why a deployed build compresses pictures and not video,
 that is where to look rather than in the worker.
 
 Deploys from `web/` as the Vercel project root (`vercel.json` holds the strict
-CSP and cache headers — the only outside origin allowed is the usage counter,
-`https://e.syedsarib.com`, loaded by `web/js/analytics.js` on the production
-host only, which sends visits and anonymous totals and never a file, a name or
-a pixel). The browser test
+CSP and cache headers — the only outside origins allowed are the analytics
+proxy `https://e.syedsarib.com` and the shared add-on host
+`https://analytics.syedsarib.com`, both used by `web/js/analytics.js` on the
+production host only, which sends visits, device and network details and run
+totals and never a file, a name or a pixel). The browser test
 harness lives in `tests/web/`: the promise-suite E2E, the perf bench with its
 snapshot gates, the width-sweep and theme probes, the fixture generators, and a
 static server that replays production's headers. `tests/web/README.md` has the

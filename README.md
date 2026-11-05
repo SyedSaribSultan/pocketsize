@@ -25,12 +25,14 @@ browser, SSIMULACRA 2 included (ported to JavaScript and validated against the
 reference implementation). Your images never leave your device.
 
 That is not a promise you have to take on trust. The page is served under
-`Content-Security-Policy: default-src 'none'; connect-src 'self' https://e.syedsarib.com`,
+`Content-Security-Policy: default-src 'none'; connect-src 'self' https://e.syedsarib.com https://analytics.syedsarib.com`,
 so the browser itself will not let it send anything to any other address,
-whatever the code says. The one outside address is our usage counter: page
-visits and anonymous totals (how many images, how many MB saved, which
-formats, how long), sent by [`web/js/analytics.js`](web/js/analytics.js) —
-never a file, a file name or image data. Open the network tab and watch.
+whatever the code says. The two outside addresses are our analytics: page
+visits, device and network details (including IP address), and run totals
+(how many images, how many MB saved, which formats, how long), sent by
+[`web/js/analytics.js`](web/js/analytics.js) and the shared syedsarib.com
+add-on it loads — never a file, a file name or image data. Open the network
+tab and watch.
 
 [tests/BENCHMARK.md](tests/BENCHMARK.md) holds a reproducible head-to-head
 against single-format pipelines and fixed-quality defaults, every strategy

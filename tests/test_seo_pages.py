@@ -86,12 +86,13 @@ class EveryPageStandsAlone(unittest.TestCase):
                            if 'type="application/ld+json"' in t]
                 self.assertEqual(inline, allowed)
 
-    def test_the_usage_counter_is_on_every_page_and_is_the_only_outside_origin(self):
-        """Analytics (visits and anonymous totals, never a file) is the one
-        thing allowed to leave the device. Every served page loads it from
-        the one external file, and the CSP names exactly one outside origin -
-        the counter's - so anything else trying to leave is still blocked by
-        the browser, and the proof page's claim stays literally true."""
+    def test_analytics_is_on_every_page_and_its_origins_are_the_only_outside_ones(self):
+        """Analytics (visits, device and network details, run totals, never a
+        file) is the one thing allowed to leave the device. Every served page
+        loads it from the one external file, and the CSP names exactly two
+        outside origins - the PostHog proxy and the shared add-on host - so
+        anything else trying to leave is still blocked by the browser, and the
+        proof page's claim stays literally true."""
         for name in ALL_PAGES:
             with self.subTest(page=name):
                 self.assertIn('<script src="/js/analytics.js" async></script>', _read(name))
@@ -99,11 +100,11 @@ class EveryPageStandsAlone(unittest.TestCase):
         csp = next(h["value"] for rule in vercel["headers"] for h in rule["headers"]
                    if h["key"] == "Content-Security-Policy")
         outside = set(re.findall(r"https?://[^\s;']+", csp))
-        self.assertEqual(outside, {"https://e.syedsarib.com"})
+        self.assertEqual(outside, {"https://e.syedsarib.com", "https://analytics.syedsarib.com"})
         directives = dict(d.strip().split(" ", 1) for d in csp.split(";") if " " in d.strip())
-        self.assertEqual(directives["connect-src"], "'self' https://e.syedsarib.com")
+        self.assertEqual(directives["connect-src"], "'self' https://e.syedsarib.com https://analytics.syedsarib.com")
         self.assertIn("form-action 'none'", csp)
-        self.assertIn("connect-src 'self' https://e.syedsarib.com",
+        self.assertIn("connect-src 'self' https://e.syedsarib.com https://analytics.syedsarib.com",
                       _read("nothing-is-uploaded.html"),
                       "the proof page quotes the policy the server actually sends")
         script = _read("js/analytics.js")

@@ -6,6 +6,14 @@ This project follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Changed
+- **Full syedsarib.com analytics (owner decision, 2026-11-06).**
+  `web/js/analytics.js` now loads the shared add-on
+  (`https://analytics.syedsarib.com/t/plus.js`) like every other
+  syedsarib.com site: device and browser details, IP address, network owner
+  and IP location, a human check, and time on page and scroll depth. The CSP
+  allows `https://analytics.syedsarib.com` in `script-src` and `connect-src`,
+  and the proof page, README, GUIDE and llms.txt now list everything that is
+  collected. Pictures, file names and image data still never leave the device.
 - **Rebuilt on the Sarib design system's own components, with depth.** The
   whole system is now vendored verbatim under `web/sarib/` (tokens,
   components, icons; hash-locked in `sarib-design.lock.json`, checked by
