@@ -87,25 +87,22 @@ function settleAlpha(policy) {
 
 /* ---------------------------------- theme --------------------------------- */
 
-/* Three MODES, cycled on one button: match my device -> light -> dark. The
- * mode is the person's choice and lives in localStorage; the stamp on <html>
- * is always the RESOLVED theme (js/theme.js resolves "match my device" to the
- * OS's answer, live). This control therefore reads and writes the mode, never
- * the stamp - the stamp is derived. The button's visible word is the CURRENT
- * mode: a control that showed the next state read as already being in it. */
-const THEME_WORD = { "": "Match my device", light: "Light", dark: "Dark" };
-const THEME_NEXT = { "": "light", light: "dark", dark: "" };
+/* Two MODES, toggled on one button: light <-> dark. Every visit starts in
+ * light, whatever the OS theme; a dark choice lives in localStorage and
+ * js/theme.js stamps it on <html> before first paint. The button's visible
+ * word is the CURRENT mode: a control that showed the next state read as
+ * already being in it. */
+const THEME_WORD = { light: "Light", dark: "Dark" };
+const THEME_NEXT = { light: "dark", dark: "light" };
 
 function themeMode() {
   if (typeof window.__themeMode === "string") {
-    return window.__themeMode === "light" || window.__themeMode === "dark"
-      ? window.__themeMode : "";
+    return window.__themeMode === "dark" ? "dark" : "light";
   }
   try {
-    const saved = localStorage.getItem("imgc-theme");
-    if (saved === "light" || saved === "dark") return saved;
-  } catch { /* private browsing reads as "match my device" */ }
-  return "";
+    if (localStorage.getItem("imgc-theme") === "dark") return "dark";
+  } catch { /* private browsing reads as light */ }
+  return "light";
 }
 
 function reflectTheme() {
@@ -126,8 +123,7 @@ function bindTheme() {
     const next = THEME_NEXT[themeMode()];
     window.__themeMode = next;          // holds for the visit even without storage
     try {
-      if (next) localStorage.setItem("imgc-theme", next);
-      else localStorage.removeItem("imgc-theme");
+      localStorage.setItem("imgc-theme", next);
     } catch { /* private browsing; the in-memory mode above still applies */ }
     if (window.__applyTheme) window.__applyTheme();
     reflectTheme();

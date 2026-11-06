@@ -6,8 +6,7 @@
 <title>Compress many images at once, free · Pocketsize</title>
 <meta name="description" content="Drop a whole folder: every picture compressed in parallel on your own device, measured against its original, zipped with a written report. No upload, no queue, no account.">
 <meta name="color-scheme" content="light dark">
-<meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
-<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f0e0c">
+<meta name="theme-color" content="#ffffff">
 <link rel="canonical" href="https://pocketsize.syedsarib.com/bulk-image-compressor">
 
 <!-- The social card. og.png is the one asset with words baked in; the alt
@@ -82,10 +81,10 @@
 }
 </script>
 
-<!-- Applies the resolved theme before first paint - a classic script, because
-     a deferred module would let the wrong theme flash first. The token layer
-     below flips on data-theme, so the script always stamps an answer - the
-     saved choice, or the device's own setting; there is no unstamped state. -->
+<!-- Applies the theme before first paint - a classic script, because a
+     deferred module would let the wrong theme flash first. The token layer
+     below flips on data-theme, so the script always stamps an answer - a saved
+     dark choice, else light whatever the OS theme; there is no unstamped state. -->
 <script src="/js/theme.js"></script>
 
 <!-- Analytics: page visits, device and network details, and run totals (how
@@ -186,7 +185,7 @@
   </div>
 
   <div class="s-appbar__end">
-    <!-- Three modes, cycled: Match my device, Light, Dark. The visible word is
+    <!-- Two modes, toggled: Light (every visit's start), Dark. The visible word is
          always the CURRENT mode; the title says what a click moves to. On a
          phone the words fold away to the glyphs (still read out) so the bar
          stays one 64px band. -->

@@ -96,14 +96,14 @@ vocabulary (`--c-*`, `--s-1`…`--s-6`, `--radius*`, `--font-*`, `--s-target`)
 onto the system's `--s-*` tokens, and every other sheet consumes only those
 aliases; `tests/test_design_system.py` holds them to it. Theme flips are the
 token layer's own `data-theme="dark"` switch: `js/theme.js` always stamps a
-RESOLVED theme before first paint (the saved choice, or the OS's answer for
-"match my device", re-stamped live when the OS changes).
+theme before first paint (a saved dark choice, else light whatever the OS
+theme).
 
 There is one page. The marketing sections, the `/compare` and `/download` pages,
 the synthetic demo, the lifetime savings counter and the CSV/JSON report export
 were removed: none of them was part of compressing an image. Two of those ideas
 later came back in different, smaller shapes because real users asked: a
-three-state theme control (Light / Dark / Match my device, one cycling button),
+two-state theme control (Light / Dark, one toggling button; every visit starts light),
 and a written record — `pocketsize-report.txt` rides in every zip with each
 picture's before/after, measured match, and the full versions-tried table.
 
