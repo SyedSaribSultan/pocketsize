@@ -11,8 +11,9 @@
  * localStorage. The stamp is always set, so the stylesheet never has an
  * unstamped state to style.
  *
- * The header button that cycles the mode lives in main.js; it calls
- * window.__applyTheme after writing the new mode.
+ * The header button that cycles the mode lives in main.js; it reads the mode
+ * through window.__themeModeNow and calls window.__applyTheme after writing
+ * the new one.
  */
 
 "use strict";
@@ -36,6 +37,8 @@
 
   apply();
 
-  // The seam main.js drives after the button writes a new mode.
+  // The seams main.js drives: apply after the button writes a new mode, and
+  // read the mode by the same rule rather than a second copy of it.
   window.__applyTheme = apply;
+  window.__themeModeNow = mode;
 })();

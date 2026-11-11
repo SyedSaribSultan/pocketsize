@@ -42,6 +42,9 @@ export function show(el, on) {
  *
  *   An optional ACTION rides along - `toast("Cleared 6", { label, onAction })`
  *   renders one button - which is what makes undo possible without a dialog.
+ *   A toast with an action is a control, so a receipt that preempts it puts
+ *   it back in line rather than dropping it, and `onClose` runs only when it
+ *   finally goes without the action taken.
  *
  * The card is the system's canonical toast, the same DOM components.js
  * toast() builds: the tone's icon, the text, the action as a brand link and
@@ -51,12 +54,16 @@ export function show(el, on) {
 let toastTimer = null;
 let toastLeft = 0;
 let toastStarted = 0;
+let shown = null;             // the entry on screen, until it goes
 const pending = [];
 
 function showNext() {
   const region = $("toast");
   if (!region || toastTimer || region.dataset.up || !pending.length) return;
-  const { message, action, tone } = pending.shift();
+  const entry = pending.shift();
+  const { message, action, tone } = entry;
+  shown = entry;
+  entry.onShow?.();
 
   const card = document.createElement("div");
   card.className = tone ? `s-toast s-toast--${tone}` : "s-toast";
@@ -81,6 +88,7 @@ function showNext() {
     label.textContent = action.label;
     b.append(label);
     b.addEventListener("click", () => {
+      shown = null;           // acted on: nothing to close or bring back
       dismiss();
       action.onAction();
     });
@@ -129,6 +137,7 @@ function arm() {
 
 function dismiss() {
   const region = $("toast");
+  if (shown) { shown.action?.onClose?.(); shown = null; }
   if (toastTimer > 0) clearTimeout(toastTimer);
   toastTimer = null;
   if (region) {
@@ -150,6 +159,9 @@ function dismiss() {
 export function toast(message, action, tone) {
   if (!message) return;
   pending.unshift({ message, action, tone });
+  // An action still on screen comes back right after this receipt.
+  if (shown?.action) pending.splice(1, 0, shown);
+  shown = null;
   const el = $("toast");
   const wasUp = !!el?.dataset.up;
   if (toastTimer > 0) clearTimeout(toastTimer);
@@ -159,9 +171,10 @@ export function toast(message, action, tone) {
 }
 
 /* A notice nobody asked for - a tip, a capability, an offer. It waits its
- * turn behind anything already showing, because it can. */
-export function toastAside(message, action, tone) {
+ * turn behind anything already showing, because it can. `onShow` runs when it
+ * actually reaches the screen. */
+export function toastAside(message, action, tone, onShow) {
   if (!message) return;
-  pending.push({ message, action, tone });
+  pending.push({ message, action, tone, onShow });
   showNext();
 }

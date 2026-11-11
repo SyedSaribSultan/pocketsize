@@ -11,7 +11,7 @@ import {
 } from "./state.js";
 import { SUPPORTED, SUPPORTED_MIME } from "./format.js";
 import {
-  beginBatch, dispatch, startEngine,
+  beginBatch, dispatch, startEngine, failItem, settleBatch,
 } from "./engine.js";
 import { renderQueue } from "./queue.js";
 import { renderStage } from "./compare.js";
@@ -78,25 +78,29 @@ function measure(item) {
  *  size measured and its thumbnail drawn. One that is fails with its size in
  *  the message, and its original is withdrawn from the stage. The worker runs
  *  the same check on its own copy, so whichever sees it first, the answer is
- *  the same. */
+ *  the same.
+ *
+ *  No worker is handed the file until this check has answered, so the check
+ *  always finds the item still waiting and never withdraws the original of an
+ *  image that is already being worked on. */
 async function guardThenDraw(item) {
   let tooBig = null;
   try {
     tooBig = globalThis.tooManyPixels(await item.file.slice(0, HEADER_BYTES).arrayBuffer());
   } catch { /* unreadable here: the worker's read reports it */ }
+  item.headerChecked = true;
   if (!state.byId.has(item.id)) return;
   if (!tooBig) {
     measure(item);
     makeThumb(item);
+    dispatch();
     return;
   }
   if (item.beforeURL) URL.revokeObjectURL(item.beforeURL);
   item.beforeURL = null;
-  if (item.status === "queued") {
-    item.status = "failed";
-    item.error = tooBig;
-  }
+  if (item.status === "queued") failItem(item, tooBig);
   scheduleRender();
+  settleBatch();
 }
 
 /** "3 images", "1 image" - the noun agrees with the count. */
@@ -129,6 +133,9 @@ export function addFiles(files) {
     const item = {
       id: uid(),
       name: file.name || "pasted image.png",
+      /* The name it arrived with. `name` is the output name and the rename
+         field edits it; this never changes. */
+      sourceName: file.name || "pasted image.png",
       file,
       originalBytes: file.size,
       status: "queued",
@@ -137,8 +144,8 @@ export function addFiles(files) {
       afterURL: null,
       warnings: [], candidates: [],
       width: 0, height: 0, outW: 0, outH: 0,
-      override: null,
       frac: 0,
+      headerChecked: false,
     };
     state.items.push(item);
     state.byId.set(item.id, item);

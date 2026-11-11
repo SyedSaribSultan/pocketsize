@@ -7,7 +7,7 @@
  * achieve that would be worse still.
  */
 
-import { $, setText, toast } from "./dom.js";
+import { $, toast } from "./dom.js";
 import { state, isReady, totals } from "./state.js";
 import { human, splitName, fmtLabel, scoreText } from "./format.js";
 import { scheduleRender } from "./render.js";
@@ -61,12 +61,13 @@ function downloadBlob(blob, name) {
 
 /** One file, the one on the stage. */
 export function downloadOne(it) {
-  if (!it || !isReady(it)) return;
+  if (!it || !isReady(it)) return false;
   const name = outputName(it);
   downloadBlob(it.afterBlob, name);
   it.status = "saved";
   toast(`Downloaded ${name}`);
   scheduleRender();
+  return true;
 }
 
 /* Copy the result to the clipboard, for pasting straight into a design tool, a
@@ -127,7 +128,7 @@ function buildReport(done, names) {
   done.forEach((it, i) => {
     const resized = it.outW && (it.outW !== it.width || it.outH !== it.height);
     lines.push("");
-    lines.push(`${i + 1}. ${it.name} → ${names[i]}`);
+    lines.push(`${i + 1}. ${it.sourceName || it.name} → ${names[i]}`);
     lines.push(`   kept:          ${fmtLabel(it.fmt)}`);
     lines.push(`   size:          ${human(it.originalBytes)} → ${human(it.newBytes)}`);
     lines.push(`   pixels:        ${it.width}×${it.height}`
@@ -269,18 +270,24 @@ async function zipStore(entries) {
 }
 
 /** Everything with a result. One image is a file; several are a zip, and the
- *  button says which before it is pressed. */
+ *  button says which before it is pressed. Resolves true once something was
+ *  actually handed to the browser to save. */
 export async function downloadAll() {
   const done = state.items.filter(isReady);
-  if (!done.length) return;
-  if (done.length === 1) { downloadOne(done[0]); return; }
+  if (!done.length || state.zip === "zipping") return false;
+  if (done.length === 1) return downloadOne(done[0]);
 
-  setText($("save-label"), "Zipping…");
-  $("save-btn").disabled = true;
+  state.zip = "zipping";
+  scheduleRender();
+  let saved = false;
   try {
     const used = new Set();
     const names = done.map((it) => outputName(it, used));
-    const entries = done.map((it, i) => ({ name: names[i], blob: it.afterBlob }));
+    /* The bytes as they are now. Building the zip awaits, and anything that
+       moved in the meantime - re-queued by a plan change, swapped to another
+       encode - is not the file in the archive and must not be marked saved. */
+    const blobs = done.map((it) => it.afterBlob);
+    const entries = done.map((it, i) => ({ name: names[i], blob: blobs[i] }));
     /* The written record rides along, always. It is the one artefact the
        records/legal/archive personas asked for, and one text file in a zip
        costs everyone else nothing. */
@@ -290,7 +297,10 @@ export async function downloadAll() {
     });
     const zip = await zipStore(entries);
     downloadBlob(zip, "pocketsize.zip");
-    for (const it of done) it.status = "saved";
+    saved = true;
+    done.forEach((it, i) => {
+      if (isReady(it) && it.afterBlob === blobs[i]) it.status = "saved";
+    });
     /* If pixels were removed anywhere, the toast that announces the saving
        says so - the number never travels without that fact. And the written
        report is mentioned, because an artefact nobody knows exists builds no
@@ -302,12 +312,16 @@ export async function downloadAll() {
         + "not just compressed." : "")
       + " A written report of everything is inside.");
     /* Closure on the button itself: the last moment of the flow says it
-       worked, then hands the slot back. Written a beat AFTER the render below
-       repaints the rows, so the renderer does not immediately overwrite it. */
-    setTimeout(() => setText($("save-label"), "Saved ✓"), 80);
-    setTimeout(() => scheduleRender(), 2200);
+       worked, then hands the slot back. */
+    state.zip = "saved";
+    setTimeout(() => {
+      if (state.zip === "saved") state.zip = null;
+      scheduleRender();
+    }, 2200);
   } catch {
+    state.zip = null;
     toast("Could not build the zip. Try downloading them one at a time.", null, "critical");
   }
   scheduleRender();
+  return saved;
 }

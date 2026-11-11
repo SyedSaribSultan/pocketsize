@@ -114,10 +114,10 @@ export function chooseCandidate(format) {
   if (!applyView(it, view)) return "";
 
   it.pick = (view === it.auto) ? null : format;
-  /* The diff was computed against the previous result, so it is now wrong. Drop
-     it and let the stage rebuild it on demand rather than showing a heatmap of
-     an encode nobody is looking at any more. */
-  it.diffURL = null;
+  /* "downloaded" described the file that was on screen when it was saved, and
+     that is no longer the one shown. The stage's heatmap follows the swap on
+     its own: it is keyed by the format and size it was built for. */
+  if (it.status === "saved") it.status = "done";
   return format === ORIGINAL_PICK ? "Keeping your original: nothing compressed"
     : view === it.auto ? "Back to the smallest one that passed"
     : `Keeping ${fmtLabel(format)} for this image`;

@@ -27,6 +27,8 @@ let mode = "split";
 let zoom = 0;                 // 0 means "fit"; any other number is explicit
 let pan = { x: 0, y: 0 };
 let diffFor = null;           // which item+pick the heatmap on screen was built for
+let diffBuilding = null;      // which one is being built right now, if any
+let diffFailed = null;        // which one could not be built, so it is said once
 
 export const getMode = () => mode;
 
@@ -247,7 +249,8 @@ export function setMode(next) {
   setText(badge, next === "after"
     ? "Showing the compressed picture"
     : "Difference: brighter means more change");
-  if (next === "diff") ensureDiff();
+  // Asked for again, so a heatmap that could not be built is tried and said again.
+  if (next === "diff") { diffFailed = null; ensureDiff(); }
   applySplit();
 }
 
@@ -261,10 +264,16 @@ export function setMode(next) {
  * The scale is deliberately exaggerated: at a floor of 90 the honest difference
  * is nearly invisible, and a black rectangle would be a true image that told
  * nobody anything. What the colour means is stated on the page beside it. */
+const diffKey = (it) => it && `${it.id}:${it.fmt}:${it.newBytes}`;
+
 async function ensureDiff() {
   const it = current();
-  const key = it && `${it.id}:${it.fmt}:${it.newBytes}`;
-  if (!it || !isReady(it) || diffFor === key) return;
+  const key = diffKey(it);
+  /* One build per result. A batch renders every frame, and each render used
+     to start another full decode pair while the first was still going. */
+  if (!it || !isReady(it) || diffFor === key || diffBuilding === key
+      || diffFailed === key) return;
+  diffBuilding = key;
 
   const canvas = $("img-diff");
   try {
@@ -290,6 +299,9 @@ async function ensureDiff() {
     };
     const pa = grab(a), pb = grab(b);
     a.close?.(); b.close?.();
+    /* The selection or the encode moved while this was decoding: this heatmap
+       belongs to a picture that is no longer on the stage. */
+    if (diffKey(current()) !== key) return;
 
     const out = new ImageData(w, h);
     for (let i = 0; i < pa.data.length; i += 4) {
@@ -313,7 +325,12 @@ async function ensureDiff() {
        the panel it used to be written into is gone; a role=status announces it
        without stealing focus from the comparison. */
     diffFor = null;
-    toast("This browser could not decode both versions, so the difference cannot be drawn.", null, "critical");
+    diffFailed = key;
+    if (diffKey(current()) === key) {
+      toast("This browser could not decode both versions, so the difference cannot be drawn.", null, "critical");
+    }
+  } finally {
+    if (diffBuilding === key) diffBuilding = null;
   }
 }
 

@@ -167,13 +167,27 @@ let onCodecStatus = null;   // set per job so the UI can narrate the first load
  * makes the second caller wait for the first instead of colliding with it. */
 const CODEC_LOADS = {};
 
+/* A load that failed on the network is not the browser saying "cannot": the
+ * page may have been offline before the codec reached the cache. It is tried
+ * again on a later job, no sooner than this, while a codec that downloaded and
+ * still would not compile stays unavailable for good. */
+const CODEC_RETRY_MS = 30_000;
+const CODEC_FAILED_AT = {};
+
 function loadCodec(name, script, globalName, wasmFile) {
+  if (CODECS[name] === false && CODEC_FAILED_AT[name]
+      && Date.now() - CODEC_FAILED_AT[name] > CODEC_RETRY_MS) {
+    CODECS[name] = null;
+    CODEC_LOADS[name] = null;
+  }
   if (CODECS[name] !== null) return Promise.resolve(CODECS[name]);
   if (!CODEC_LOADS[name]) {
     CODEC_LOADS[name] = (async () => {
+      let fetched = false;
       try {
         if (onCodecStatus) onCodecStatus(name);
-        importScripts(`vendor/${script}`);
+        // A retry after a failed wasm fetch must not run the glue twice.
+        if (!self[globalName]) importScripts(`vendor/${script}`);
         /* Streaming compile: the download and the compile overlap, and Chrome
            only persists compiled wasm in its code cache for the streaming path
            - without it, every worker in the pool recompiled the 3.5 MB AVIF
@@ -183,8 +197,12 @@ function loadCodec(name, script, globalName, wasmFile) {
         let module;
         try {
           module = await WebAssembly.compileStreaming(fetch(`vendor/${wasmFile}`));
+          fetched = true;
         } catch {
-          const bytes = await (await fetch(`vendor/${wasmFile}`)).arrayBuffer();
+          const res = await fetch(`vendor/${wasmFile}`);
+          if (!res.ok) throw new Error(`vendor/${wasmFile}: ${res.status}`);
+          const bytes = await res.arrayBuffer();
+          fetched = true;
           module = await WebAssembly.compile(bytes);
         }
         await self[globalName].init(module);
@@ -192,6 +210,7 @@ function loadCodec(name, script, globalName, wasmFile) {
       } catch (e) {
         console.warn(`codec ${name} unavailable:`, e && e.message ? e.message : e);
         CODECS[name] = false;
+        CODEC_FAILED_AT[name] = fetched ? 0 : Date.now();
       }
       return CODECS[name];
     })();
@@ -1178,6 +1197,7 @@ async function searchUnderSize(job, encoder, cap, report) {
   let chosen = null;
   let lo = 0, hi = levels.length - 1;
   while (lo <= hi) {
+    checkAborted();
     const mid = (lo + hi) >> 1;
     report(++probes);
     if (PERF) PERF.probes++;
@@ -1194,6 +1214,7 @@ async function searchUnderSize(job, encoder, cap, report) {
      rejected a rung that fits once those passes have run. One probe upward
      recovers the quality that would otherwise be left on the table. */
   if (chosen < levels.length - 1) {
+    checkAborted();
     report(++probes);
     const better = await encodeAt(chosen + 1, false);
     if (better.length <= cap) { chosen++; data = better; }
@@ -1202,6 +1223,7 @@ async function searchUnderSize(job, encoder, cap, report) {
   /* Measured, not assumed. Shipping over a cap the person set is the one thing
      this search must never do. */
   while (data.length > cap && chosen > 0) {
+    checkAborted();
     report(++probes);
     chosen--;
     data = await encodeAt(chosen, false);
@@ -1660,10 +1682,12 @@ async function runJob(msg) {
   const rejected = new Set();
   let best = bestPassing;
   while (best && !(await chromaOk(best))) {
+    checkAborted();
     // Step this candidate up its ladder until the channels clear, then let it
     // compete again at its new size.
     let escalated = false;
     while (best.index < best.top) {
+      checkAborted();
       best.index++;
       best.data = await best.encodeAt(best.index, false);
       // Escalating up the ladder grows the file. Under a cap that is not an
@@ -1723,6 +1747,7 @@ async function runJob(msg) {
     const pngCandidates = cap ? []
       : passing.filter((p) => p.encoder.pngFamily && !rejected.has(p.encoder.name));
     for (const cand of pngCandidates) {
+      checkAborted();
       if (sizeOf(cand) * OXI_BEST_CASE > bestSize) continue;   // cannot win
       const before = sizeOf(cand);
       cand.data = await timedAsync("oxipng", () => oxiPass(cand.data));
@@ -1736,6 +1761,7 @@ async function runJob(msg) {
     // One deeper pass on the file that actually ships. Lossless, winner-only,
     // so it costs one compression and cannot move any score.
     if (best.encoder.pngFamily) {
+      checkAborted();
       best.data = await timedAsync("oxipng", () => oxiPass(best.data, 4));
       const row = candidates.find((c) => c.format === best.encoder.name);
       if (row) row.bytes = best.data.length;
@@ -1826,11 +1852,15 @@ function attachCandidateBytes(candidates, dataByFormat, transfer) {
   }
 }
 
+/* null while a codec has not been loaded on this worker: "not tried yet" is not
+   "cannot", and reporting it as false switched the format off for the app. */
+const known = (codec) => (codec === null ? null : !!codec);
+
 function engineFlags() {
   return {
     webp: !!CAN_WEBP, png8: CAN_DEFLATE,
-    mozjpeg: !!CODECS.mozjpeg, oxipng: !!CODECS.oxipng, avif: !!CODECS.avif,
-    webpLossless: !!CODECS.webp,
+    mozjpeg: known(CODECS.mozjpeg), oxipng: known(CODECS.oxipng), avif: known(CODECS.avif),
+    webpLossless: known(CODECS.webp),
   };
 }
 
@@ -1843,6 +1873,9 @@ onmessage = (e) => {
         return;
       }
       postMessage({ id: msg.id, rev: msg.rev, type: "failed", error: String(exc && exc.message || exc) });
+    }).finally(() => {
+      // Finished jobs are not the current one: a late abort finds nothing.
+      if (CURRENT && CURRENT.id === msg.id) CURRENT = null;
     });
   } else if (msg.type === "abort") {
     /* The main thread has moved on from this job - the plan changed under it.

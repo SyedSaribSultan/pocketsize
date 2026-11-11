@@ -28,6 +28,14 @@ import { refreshPickers } from "./picker.js";
 
 const QUALITY_PRESETS = [95, 90, 85, 80, 70];
 
+/* Past loading what was stored, this module never writes the plan in force
+ * (state.settings); it changes the form, and main.js turns a form change into
+ * a plan change - a new revision,
+ * saved, everything re-run. The one change the form makes on its own, a pin
+ * the browser turns out not to support, is reported through here. */
+let onPlanChanged = null;
+export function setPlanChangedHandler(fn) { onPlanChanged = fn; }
+
 /** Is the plan currently promising "identical — every pixel kept"? */
 export const isLosslessPlan = () => $("quality-preset").value === "identical";
 
@@ -81,7 +89,6 @@ export function renderFormatOptions() {
   // A pin the new destination cannot write falls back to the comparison rather
   // than leaving the control showing a format the engine will not run.
   sel.value = allowed.includes(keep) ? keep : "";
-  if (!sel.value) state.settings.formats = null;
   reflectFormatAvailability();
 }
 
@@ -124,7 +131,7 @@ export function reflectFormatAvailability() {
      staying selected on a control the engine would refuse to honour. */
   if (sel && sel.value && sel.selectedOptions[0]?.disabled) {
     sel.value = "";
-    state.settings.formats = null;
+    onPlanChanged?.();
   }
   /* Said ONCE, as a receipt, not parked in the header forever: a standing
      warning about a capability most people never reach for habituates into
@@ -296,7 +303,6 @@ export function resetPlan() {
   $("plan-fit").value = "longest";
   $("plan-goal").value = "small";
   $("plan-format").value = "";
-  state.settings.formats = null;
   reflectPlan();
 }
 
@@ -436,10 +442,9 @@ export function loadSettings() {
 
   /* Built after the destination is settled, so a pin outside its list is
      dropped rather than shown on a control the engine would refuse to honour.
-     The pin is captured FIRST: renderFormatOptions restores the select's own
-     previous value - empty at boot - and clears state.settings.formats when
-     the select ends up empty, so reading the pin after calling it always read
-     null. A stored pin (and a page preset) silently died on every load. */
+     The pin is put back on the select explicitly: renderFormatOptions
+     restores the select's own previous value, which is empty at boot. A
+     stored pin (and a page preset) once silently died on every load that way. */
   const pin = state.settings.formats?.[0] || "";
   renderFormatOptions();
   $("plan-format").value = pin;

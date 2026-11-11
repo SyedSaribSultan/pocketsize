@@ -271,7 +271,11 @@ function renderFoot() {
   const btn = $("save-btn");
   // Present only when it would do something. See the note in index.html.
   show(btn, ready > 0);
-  btn.disabled = !ready || busy;
+  btn.disabled = !ready || busy || state.zip === "zipping";
+  if (state.zip) {
+    setText($("save-label"), state.zip === "zipping" ? "Zipping…" : "Saved ✓");
+    return;
+  }
   /* The button says what it will actually produce - the shape AND the size,
      so nobody commits to a download without knowing what it costs. One image
      is a file; several are a zip. The size rides along in both shapes, which

@@ -138,7 +138,7 @@ export function scoreText(score, lossless) {
 }
 
 /** The words for a quality floor, for a value that arrived from somewhere other
- *  than a click - a saved setting, a destination, or a per-image override. Each
+ *  than a click - a saved setting or a destination. Each
  *  rung reads strictly weaker than the one above it; the old words had 85 and 80
  *  sounding like each other's opposites. */
 export function wordsForQuality(q) {

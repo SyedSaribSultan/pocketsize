@@ -16,6 +16,10 @@
  *   in   { type: "progress", id, rev, stage, frac, detail, total }
  *   in   { type: "done", id, rev, result, perf, engines }
  *   in   { type: "failed", id, rev, error, warnings }
+ *   in   { type: "aborted", id, rev }               answer to an abort
+ *
+ * Anything else is ignored rather than guessed at, so a worker from a newer
+ * deploy can never be read as having finished.
  *
  * `rev` is the settings revision the job was sent under. A result that comes back
  * stamped with an older rev is stale - the plan moved while it was working - so it
@@ -24,7 +28,7 @@
 
 import { toast } from "./dom.js";
 import {
-  state, isBusy, effectiveSettings, select, firstInteresting, D,
+  state, isBusy, select, firstInteresting,
 } from "./state.js";
 import { mimeFor, fmtLabel } from "./format.js";
 import { adoptCandidateBytes, autoView, applyView } from "./views.js";
@@ -120,7 +124,8 @@ if (typeof document !== "undefined") {
   document.addEventListener("visibilitychange", () => {
     clearTimeout(graceTimer);
     if (document.hidden) {
-      /* Only worth arming while there is something to ease off from. */
+      /* Armed whether or not a run is going: a run can start while the tab is
+         hidden (an OS "Open with"), and easing an idle pool costs nothing. */
       graceTimer = setTimeout(() => {
         easedOff = true;
       }, BACKGROUND_GRACE_MS);
@@ -130,11 +135,8 @@ if (typeof document !== "undefined") {
     }
   });
 }
-/* How many file reads are in flight, and whether a dispatch is already walking
- * the queue. Both module-level on purpose - see dispatch. */
+/* How many file reads are in flight. Module-level on purpose - see walkQueue. */
 let reading = 0;
-let dispatching = false;
-let dispatchAgain = false;
 
 /** Called when a run finishes with nothing left in flight. */
 export function setBatchEndHandler(fn) { onBatchEnd = fn; }
@@ -142,9 +144,9 @@ export function setBatchEndHandler(fn) { onBatchEnd = fn; }
 /* Test seam. The browser harness asserts that the read window actually bounds
  * how much of a batch is resident at once - a regression to reading every file
  * up front would not fail any other check, it would just quietly make a
- * 200-file drop a gigabyte of ArrayBuffer. Counting items with a bytesPromise
- * from outside does NOT measure this: the promise stays set after it resolves,
- * until the post loop transfers the buffer and clears it. */
+ * 200-file drop a gigabyte of ArrayBuffer. Counting items with a read from
+ * outside does NOT measure this: the read stays on the item after it lands,
+ * until the walk transfers the buffer and drops it. */
 export const readingCount = () => reading;
 /* The high-water mark, because sampling from outside cannot catch a read that
  * starts and finishes between two polls - and a peak of zero from a poller
@@ -152,19 +154,42 @@ export const readingCount = () => reading;
 let readingPeak = 0;
 export const readingPeakSeen = () => readingPeak;
 
+/* A worker that has said nothing for this long about the job it holds is taken
+ * to be dead. The browser can kill a worker (memory pressure) without firing
+ * onerror, and without a deadline its slot stays busy and its item says
+ * "working" forever. Generous on purpose: the longest silent step is one wasm
+ * encode of a large frame, and a live job must never be failed for being slow. */
+const SILENCE_MS = 180_000;
+let watchdog = 0;
+
 function makeWorker(index) {
   const w = new Worker("/worker.js");
-  const slot = { w, busy: false, itemId: null, index };
+  const slot = { w, busy: false, itemId: null, index, beat: 0, dead: false };
   w.onmessage = (e) => onWorkerMessage(slot, e.data);
   w.onerror = () => {
+    const item = slot.itemId ? state.byId.get(slot.itemId) : null;
     if (slot.itemId) {
-      const item = state.byId.get(slot.itemId);
-      if (item) { item.status = "failed"; item.error = "the compression worker crashed"; }
+      /* The worker that crashed is not trusted with another job; a fresh one
+         takes the slot. Only when it held a job, so a script that never loads
+         cannot spin up workers in a loop - an idle one is replaced when work
+         next needs it. */
+      retire(slot);
+      if (item && item.status === "working") failItem(item, "the compression worker crashed");
+    } else {
+      slot.dead = true;
     }
-    slot.busy = false; slot.itemId = null;
-    scheduleRender(); dispatch();
+    scheduleRender(); dispatch(); settleBatch();
   };
   return slot;
+}
+
+/** Terminate a slot's worker and put a fresh one in its place. */
+function retire(slot) {
+  slot.w.terminate();
+  slot.busy = false; slot.itemId = null;
+  const fresh = makeWorker(slot.index);
+  pool[slot.index] = fresh;
+  return fresh;
 }
 
 function ensurePool(want) {
@@ -173,10 +198,52 @@ function ensurePool(want) {
   }
 }
 
+/** Fail every job whose worker has gone silent past the deadline. */
+function checkSilence() {
+  const now = performance.now();
+  let busy = 0, failed = false;
+  for (const slot of [...pool]) {
+    if (!slot.busy) continue;
+    if (now - slot.beat < SILENCE_MS) { busy++; continue; }
+    const item = state.byId.get(slot.itemId);
+    retire(slot);
+    if (item && item.status === "working") {
+      failItem(item, "the compression worker stopped responding");
+      failed = true;
+    }
+  }
+  if (!busy) { clearInterval(watchdog); watchdog = 0; }
+  if (failed) { scheduleRender(); dispatch(); settleBatch(); }
+}
+
+/** Mark an item failed. Every failure goes through here, so each one carries
+ *  its own token and a retry that fails again is a new failure to report. */
+export function failItem(item, error) {
+  item.status = "failed";
+  item.error = error;
+  item.failure = {};
+  item.read = null;
+}
+
+/** Fold one worker's codec report into the app's. Unknown (null) says
+ *  nothing, and a format any worker can write stays writable: one worker whose
+ *  codec failed to load must not switch the format off for the whole app. */
+function mergeCaps(report) {
+  for (const [key, ok] of Object.entries(report)) {
+    if (ok == null) continue;
+    if (ok === true || state.caps[key] !== true) state.caps[key] = ok;
+  }
+  reflectFormatAvailability();
+}
+
 /** Ask the browser what it can encode, before anyone has dropped anything. The
- *  answer decides which formats the plan is allowed to offer. */
+ *  answer decides which formats the plan is allowed to offer. Asked once: the
+ *  answer does not change while the page is open. */
+let probed = false;
 export function startEngine() {
   ensurePool(1);
+  if (probed) return;
+  probed = true;
   pool[0].w.postMessage({ type: "probe" });
 }
 
@@ -249,85 +316,64 @@ export function holdWork(on) {
   if (!held) dispatch();
 }
 
-/* One walk of the queue at a time.
+/* One walk of the queue, start to finish, with no await in it.
  *
- * dispatch awaits mid-loop and is called from ten places - a worker finishing,
- * a settings change, a removal, and now every completed file read. Two walks
- * overlapping is not a theoretical race: both see the same queued items, both
- * await the same bytesPromise, and both post it - and the second postMessage
- * throws DataCloneError, because the first transferred the buffer and detached
- * it. Observed, on a 24-file batch, the first time the read window was bounded.
- *
- * A call that arrives mid-walk sets a flag instead of running, and the walk in
- * progress goes round again when it finishes. That way nothing is dropped and
- * nothing is done twice. */
-export async function dispatch() {
+ * The walk used to await each file's bytes mid-loop, and everything it did
+ * after an await acted on a snapshot that might no longer be true: an item
+ * stopped, cleared or failed during the wait was set back to "working" and
+ * posted anyway, and one slow read held up every idle worker behind it. Now a
+ * read reports back by calling dispatch when it lands, and the walk only hands
+ * out items whose bytes are already here - so every status it reads is the
+ * live one, and two walks can never overlap. */
+export function dispatch() {
   if (held) return;
-  if (dispatching) { dispatchAgain = true; return; }
-  dispatching = true;
-  try {
-    await walkQueue();
-  } finally {
-    dispatching = false;
-  }
-  if (dispatchAgain) { dispatchAgain = false; dispatch(); }
+  walkQueue();
 }
 
-async function walkQueue() {
+function walkQueue() {
   const queued = state.items.filter((i) => i.status === "queued");
   if (!queued.length) return;
   ensurePool(queued.length);
 
   /* Read ahead, but only far enough to keep the pool fed.
    *
-   * This started every read at once, which fixed a real bug - it used to await
-   * each file's bytes before handing the next item to a worker, so the last
-   * worker sat idle through eleven sequential reads. But "all of them" made
-   * peak memory a function of how many files were dropped rather than of what
-   * the machine can chew on: two hundred five-megabyte photographs is a
-   * gigabyte of ArrayBuffer resident before a single one has been encoded, and
-   * on a phone that is the tab.
+   * Reading every file up front made peak memory a function of how many files
+   * were dropped rather than of what the machine can chew on: two hundred
+   * five-megabyte photographs is a gigabyte of ArrayBuffer resident before a
+   * single one has been encoded, and on a phone that is the tab.
    *
    * The window is the pool plus two: every worker has its bytes, and two more
-   * are in flight so a slot never waits on a disk read. Beyond that the reads
-   * are simply not started yet - each completion tops the window up, so this
-   * throttles memory without throttling throughput.
-   *
-   * `reading` is a module-level count rather than a local one because dispatch
-   * is re-entrant: it awaits mid-loop and is called from nine places, so two
-   * overlapping runs each keeping their own tally would each open a full
-   * window. Decrementing in the settle handler rather than after the await is
-   * the same reasoning - the count has to fall when the read finishes, not
-   * when some particular caller gets around to noticing. */
-  /* Plus two on an ordinary machine so a worker never waits on a disk read;
-     plus one where memory is the binding constraint, since there the point of
-     the window is the resident bytes rather than the idle slot. */
+   * are loaded or loading so a slot never waits on a disk read. It counts every
+   * read not yet handed to a worker, landed or not, so the bytes resident stay
+   * inside it however long the workers take. Plus one rather than two where
+   * memory is the binding constraint, since there the point of the window is
+   * the resident bytes rather than the idle slot. */
   const window = pool.length + (POOL_CEILING === 4 ? 1 : 2);
+  let resident = queued.filter((i) => i.read).length;
   for (const item of queued) {
-    if (reading >= window) break;
-    if (item.bytesPromise) continue;
-    reading += 1;
-    if (reading > readingPeak) readingPeak = reading;
-    item.bytesPromise = item.file.arrayBuffer()
-      .catch(() => null)
-      .finally(() => {
-        reading -= 1;
-        /* A slot freed by a finished read is a slot the next file can use.
-           Without this the window would drain to zero and stop, because the
-           only other thing that calls dispatch is a worker finishing. The
-           guard in dispatch is what keeps this from re-entering the walk that
-           is very likely still in progress above. */
-        dispatch();
-      });
+    if (resident >= window) break;
+    if (item.read) continue;
+    startRead(item);
+    resident += 1;
   }
 
   for (const item of queued) {
     /* While eased off, only the first few slots are fed. Jobs already running
        in the slots above are left to finish - the pool narrows by draining,
        not by throwing work away. */
-    const width = activeWidth();
     const busyNow = pool.reduce((n, s) => n + (s.busy ? 1 : 0), 0);
-    if (busyNow >= width) return;   // a finishing worker calls back
+    if (busyNow >= activeWidth()) return;   // a finishing worker calls back
+
+    /* Not yet: its header is still being checked, or its bytes are still on
+       the way. Whichever finishes calls dispatch again. */
+    const read = item.read;
+    if (!item.headerChecked || !read || !read.done) continue;
+    if (!read.buffer) {
+      failItem(item, "could not read the file");
+      scheduleRender();
+      settleBatch();
+      continue;
+    }
 
     // Prefer the worker that last handled this item - its decode cache makes a
     // quality-only re-run start instantly.
@@ -335,9 +381,12 @@ async function walkQueue() {
       ? pool[item.slot] : null;
     if (!slot) slot = pool.find((s) => !s.busy);
     if (!slot) return;   // every worker is busy; a finishing one calls back
+    if (slot.dead) slot = retire(slot);
 
+    item.read = null;   // transferred below; a second run must read again
     slot.busy = true;
     slot.itemId = item.id;
+    slot.beat = performance.now();
     item.slot = slot.index;
     item.status = "working";
     item.stage = "reading";
@@ -349,35 +398,30 @@ async function walkQueue() {
     item.startedAt = performance.now();
     item.elapsedMs = null;
     scheduleRender("queue", item.id);
-
-    /* Its read may not have started yet - the window above is bounded, so a
-       queued item can reach this loop with nothing pending. Leave it queued;
-       the read that frees a window slot calls dispatch again. */
-    if (!item.bytesPromise) {
-      item.status = "queued";
-      item.startedAt = null;
-      slot.busy = false; slot.itemId = null;
-      continue;
-    }
-    const buffer = await item.bytesPromise;
-    item.bytesPromise = null;   // transferred below; a second read must re-open
-    if (!buffer) {
-      item.status = "failed";
-      item.error = "could not read the file";
-      slot.busy = false; slot.itemId = null;
-      scheduleRender();
-      continue;
-    }
-    if (!state.byId.has(item.id) || item.status !== "working") {   // removed mid-read
-      slot.busy = false; slot.itemId = null;
-      continue;
-    }
     slot.w.postMessage({
       type: "job", id: item.id, rev: state.settingsRev,
-      name: item.name, buffer, mime: mimeFor(item.file),
-      settings: effectiveSettings(item),
-    }, [buffer]);
+      name: item.name, buffer: read.buffer, mime: mimeFor(item.file),
+      settings: { ...state.settings },
+    }, [read.buffer]);
+    if (!watchdog) watchdog = setInterval(checkSilence, 15_000);
   }
+}
+
+/* One file read. The bytes live on the read record, and the item holds the
+   record only while it waits for a worker: a stop, a removal or a failure
+   drops it, and the buffer goes with it. */
+function startRead(item) {
+  const read = { done: false, buffer: null };
+  item.read = read;
+  reading += 1;
+  if (reading > readingPeak) readingPeak = reading;
+  item.file.arrayBuffer()
+    .then((buffer) => { read.buffer = buffer; }, () => {})
+    .finally(() => {
+      read.done = true;
+      reading -= 1;
+      dispatch();
+    });
 }
 
 /** Stop everything in flight. Workers are terminated - the only way to interrupt
@@ -385,16 +429,15 @@ async function walkQueue() {
 export function cancelAll() {
   const stopping = state.items.filter(isBusy);
   if (!stopping.length) return;
-  for (const slot of pool) {
-    if (!slot.busy) continue;
-    slot.w.terminate();
-    pool[slot.index] = makeWorker(slot.index);
+  for (const slot of [...pool]) {
+    if (slot.busy) retire(slot);
   }
   for (const item of stopping) {
     // Nothing stale or half-shown survives a stop as though it were a result.
     if (item.stale || item.liveCandidates) clearResult(item);
-    item.status = item.candidates?.length ? "failed" : "cancelled";
-    item.error = "stopped";
+    item.read = null;
+    if (item.candidates?.length) failItem(item, "stopped");
+    else { item.status = "cancelled"; item.error = "stopped"; }
     item.frac = 0;
   }
   batchActive = false;
@@ -409,20 +452,37 @@ const STAGE_TEXT = {
   encoding: (d, pct) => `Testing ${fmtLabel(d)} · ${pct}%`,
 };
 
+const TERMINAL = new Set(["done", "failed", "aborted"]);
+
 function onWorkerMessage(slot, msg) {
+  if (pool[slot.index] !== slot) return;   // a retired worker's last words
   if (msg.type === "caps") {
+    // The probe asks the browser itself, so its answer stands as given.
     state.caps = { ...state.caps, ...msg.caps };
     reflectFormatAvailability();
     scheduleRender("queue");
     return;
   }
 
+  /* Only the job this slot holds speaks for it, and only in the words of the
+     contract. Everything else is ignored, never taken as a finish. */
+  if (msg.id == null || msg.id !== slot.itemId) return;
+  const terminal = TERMINAL.has(msg.type);
+  if (!terminal && msg.type !== "progress" && msg.type !== "candidate") return;
+  slot.beat = performance.now();
+  if (terminal) {
+    slot.busy = false;
+    slot.itemId = null;
+    if (msg.engines) mergeCaps(msg.engines);
+  }
+
+  /* Removed, stopped or failed while its worker was busy: the slot is free
+     again above, and nothing the worker says changes the item. */
   const item = state.byId.get(msg.id);
-  if (!item) {
-    if (msg.type !== "progress") { slot.busy = false; slot.itemId = null; dispatch(); }
+  if (!item || item.status !== "working") {
+    if (terminal) { dispatch(); settleBatch(); }
     return;
   }
-  if (item.status === "cancelled") return;
 
   if (msg.type === "progress") {
     const wasFrac = item.frac || 0;
@@ -459,7 +519,7 @@ function onWorkerMessage(slot, msg) {
      result in seconds while the rest of the bake-off runs behind it. The done
      message remains the authority and replaces all of this. */
   if (msg.type === "candidate") {
-    if (msg.rev !== state.settingsRev && !item.override) return;   // stale preview
+    if (msg.rev !== state.settingsRev) return;   // stale preview
     const c = msg.candidate;
     if (msg.first) { item.liveCandidates = []; item.livePickBytes = null; }
     item.formats = msg.total || item.formats;
@@ -496,13 +556,6 @@ function onWorkerMessage(slot, msg) {
     return;
   }
 
-  slot.busy = false;
-  slot.itemId = null;
-  if (msg.engines) {
-    state.caps = { ...state.caps, ...msg.engines };
-    reflectFormatAvailability();
-  }
-
   if (msg.type === "aborted") {
     /* It was told to stop because the plan moved. Straight back to the queue,
        to be redone under the settings that are actually current. Whatever it
@@ -514,7 +567,7 @@ function onWorkerMessage(slot, msg) {
     return;
   }
 
-  if (msg.rev !== state.settingsRev && !item.override) {
+  if (msg.rev !== state.settingsRev) {
     /* Settings moved under this result: it is about to be redone from the top, so
        the clock restarts too rather than counting the discarded attempt. */
     item.status = "queued";
@@ -530,8 +583,7 @@ function onWorkerMessage(slot, msg) {
        banner looking finished - numbers from settings that no longer exist are
        worse than no numbers. */
     if (item.stale || item.liveCandidates) clearResult(item);
-    item.status = "failed";
-    item.error = msg.error || "failed";
+    failItem(item, msg.error || "failed");
     item.warnings = msg.warnings || [];
   } else if (msg.type === "done") {
     const r = msg.result;
@@ -554,7 +606,6 @@ function onWorkerMessage(slot, msg) {
     /* Measured from the decoded pixels, not guessed from the extension: it is what
        decides whether choosing JPEG has to ask a question first. */
     item.alpha = !!r.alpha;
-    item.diffURL = null;
     if (r.width) { item.width = r.width; item.height = r.height; }
     item.outW = r.outW || item.width;
     item.outH = r.outH || item.height;
@@ -573,10 +624,14 @@ function onWorkerMessage(slot, msg) {
 
   scheduleRender();
   dispatch();
-  maybeFinish();
+  settleBatch();
 }
 
-function maybeFinish() {
+/** End the run if nothing is left queued or working. Called after every write
+ *  that can take the last busy item out of the queue - a worker reply, a read
+ *  that failed, a crash, a silent worker, the header guard, a removal - so a
+ *  run ends however its last item ends. */
+export function settleBatch() {
   if (state.items.some(isBusy) || !batchActive) return;
   batchActive = false;
   if (!state.selected) select(firstInteresting()?.id);
@@ -601,7 +656,6 @@ function clearResult(item) {
   item.auto = null;
   item.pick = null;
   item.liveCandidates = null;
-  item.diffURL = null;
   item.stale = false;
 }
 
@@ -622,7 +676,11 @@ export function requeue(ids, opts = {}) {
       const slot = pool[item.slot];
       if (keep && slot && slot.itemId === item.id) {
         slot.w.postMessage({ type: "abort", id: item.id });
+        /* The live preview is from the plan that just moved, so it stops
+           being live: what stays on screen is marked stale, never both. */
         item.stale = true;
+        item.liveCandidates = null;
+        item.livePickBytes = null;
         any = true;
       }
       continue;
@@ -631,7 +689,6 @@ export function requeue(ids, opts = {}) {
     item.error = "";
     item.warnings = [];
     item.frac = 0;
-    item.diffURL = null;
     if (keep && item.afterURL) {
       item.stale = true;      // the old picture stays up until the new one lands
     } else {
@@ -645,11 +702,16 @@ export function requeue(ids, opts = {}) {
   dispatch();
 }
 
-/** Drop items, and every object URL they were holding open. */
+/** Drop items, and every object URL they were holding open. A removed item's
+ *  job is told to stop, so its worker frees up within one probe instead of
+ *  finishing a bake-off nobody will see; its reply frees the slot. */
 export function removeItems(ids) {
   for (const id of ids) {
     const item = state.byId.get(id);
     if (!item) continue;
+    const slot = item.status === "working" ? pool[item.slot] : null;
+    if (slot && slot.itemId === id) slot.w.postMessage({ type: "abort", id });
+    item.read = null;
     if (item.beforeURL) URL.revokeObjectURL(item.beforeURL);
     if (item.afterURL) URL.revokeObjectURL(item.afterURL);
     if (item.thumbURL) URL.revokeObjectURL(item.thumbURL);
@@ -660,6 +722,6 @@ export function removeItems(ids) {
   }
   if (!state.selected) select(firstInteresting()?.id);
   scheduleRender();
-  // Removing whatever was in flight frees a worker for the next one.
   dispatch();
+  settleBatch();
 }

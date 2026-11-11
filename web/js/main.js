@@ -20,6 +20,7 @@ import { human, splitName } from "./format.js";
 import {
   loadSettings, currentSettings, saveSettings, reflectPlan, reflectQualityWords,
   onQualityPreset, onDestination, alphaQuestion, alphaItemCount, resetPlan,
+  setPlanChangedHandler,
 } from "./settings.js";
 import {
   startEngine, dispatch, requeue, removeItems, cancelAll, setBatchEndHandler, pool,
@@ -95,15 +96,8 @@ function settleAlpha(policy) {
 const THEME_WORD = { light: "Light", dark: "Dark" };
 const THEME_NEXT = { light: "dark", dark: "light" };
 
-function themeMode() {
-  if (typeof window.__themeMode === "string") {
-    return window.__themeMode === "dark" ? "dark" : "light";
-  }
-  try {
-    if (localStorage.getItem("imgc-theme") === "dark") return "dark";
-  } catch { /* private browsing reads as light */ }
-  return "light";
-}
+// js/theme.js owns the rule; this reads it rather than keeping a second copy.
+const themeMode = () => window.__themeModeNow();
 
 function reflectTheme() {
   const cur = themeMode();
@@ -156,10 +150,12 @@ function bindIntake() {
      the bytes are only truly let go when the undo window closes; undo does not
      tax the common case the way a confirm dialog would. */
   $("clear-btn").addEventListener("click", () => {
-    if (state.items.some(isBusy)) cancelAll();
+    // What was still to do is stopped now and picked up again on Undo.
+    const unfinished = state.items.filter(isBusy).map((it) => it.id);
+    if (unfinished.length) cancelAll();
     const kept = state.items.splice(0, state.items.length);
     state.byId.clear();
-    state.selected = null;
+    select(null);
     scheduleRender();
     /* What the plan says can depend on what is in the queue, so emptying it
        has to take those sentences back down - and putting them back is part of
@@ -172,20 +168,22 @@ function bindIntake() {
         undone = true;
         for (const it of kept) { state.items.push(it); state.byId.set(it.id, it); }
         select(kept[0]?.id);
+        if (unfinished.length) requeue(unfinished);
         scheduleRender();
         reflectPlan();
       },
+      /* The object URLs are released only once Undo is gone for good -
+         revoking them while it can still be pressed would make undo restore
+         broken previews. */
+      onClose: () => {
+        if (undone) return;
+        for (const it of kept) {
+          if (it.beforeURL) URL.revokeObjectURL(it.beforeURL);
+          if (it.afterURL) URL.revokeObjectURL(it.afterURL);
+          if (it.thumbURL) URL.revokeObjectURL(it.thumbURL);
+        }
+      },
     });
-    /* The object URLs are released only after the undo window has passed -
-       revoking them up front would make undo restore broken previews. */
-    setTimeout(() => {
-      if (undone) return;
-      for (const it of kept) {
-        if (it.beforeURL) URL.revokeObjectURL(it.beforeURL);
-        if (it.afterURL) URL.revokeObjectURL(it.afterURL);
-        if (it.thumbURL) URL.revokeObjectURL(it.thumbURL);
-      }
-    }, 12_000);
   });
 
   /* The whole window is the drop target. A drop zone that is only part of the
@@ -221,7 +219,9 @@ function bindIntake() {
   addEventListener("dragover", (e) => {
     if (e.dataTransfer?.types?.includes("Files")) e.preventDefault();
   });
-  addEventListener("dragleave", () => {
+  addEventListener("dragleave", (e) => {
+    // Counted exactly as dragenter counts, or a non-file drag unbalances it.
+    if (!e.dataTransfer?.types?.includes("Files")) return;
     if (--dragDepth <= 0) {
       dragDepth = 0;
       delete document.body.dataset.drag;
@@ -424,18 +424,19 @@ function bindStage() {
 
   $("dl-one").addEventListener("click", () => {
     const it = current();
-    if (it && isReady(it)) track("download_clicked", savedShape("one", [it]));
-    downloadOne(it);
+    const shape = it && isReady(it) ? savedShape("one", [it]) : null;
+    if (downloadOne(it) && shape) track("download_clicked", shape);
   });
   $("copy-one").addEventListener("click", () => {
     const it = current();
     if (it && isReady(it)) track("download_clicked", savedShape("copy", [it]));
     copyImage(it);
   });
-  $("save-btn").addEventListener("click", () => {
+  $("save-btn").addEventListener("click", async () => {
     const done = state.items.filter(isReady);
-    if (done.length) track("download_clicked", savedShape(done.length > 1 ? "zip" : "one", done));
-    downloadAll();
+    const shape = done.length ? savedShape(done.length > 1 ? "zip" : "one", done) : null;
+    // Counted once the file was actually handed over, not when it was asked for.
+    if (await downloadAll() && shape) track("download_clicked", shape);
   });
 
   /* Focus mode: the comparison and nothing else. The regions are hidden, not
@@ -478,15 +479,21 @@ function setFocus(on) {
 }
 
 /* One-time hints. Each is said exactly once per browser, ever - a hint that
- * repeats is a nag, and a hint never said leaves a feature undiscoverable. */
+ * repeats is a nag, and a hint never said leaves a feature undiscoverable. It
+ * counts as said when it reaches the screen, not when it is queued: one still
+ * waiting when the page closes is said next visit. */
+const hinted = new Set();
 function hintOnce(key, message, action) {
   const k = `imgc-hint-${key}`;
+  if (hinted.has(k)) return;
   try {
     if (localStorage.getItem(k)) return;
-    localStorage.setItem(k, "1");
   } catch { /* private browsing: better to occasionally repeat than never say */ }
+  hinted.add(k);
   // Hints are asides: they wait behind anything already showing.
-  toastAside(message, action);
+  toastAside(message, action, undefined, () => {
+    try { localStorage.setItem(k, "1"); } catch { /* as above */ }
+  });
 }
 function toggleFocus() { setFocus(!document.body.dataset.focus); }
 
@@ -504,6 +511,8 @@ function bindKeys() {
       flickerFrom = getMode();
       setMode(flickerFrom === "after" ? "split" : "after");
     } else if (e.key === "d" || e.key === "D") {
+      // Chosen mid-flicker, D is where to stay: the Space release leaves it.
+      flickerFrom = null;
       setMode(getMode() === "diff" ? "split" : "diff");
     } else if (e.key === "f" || e.key === "F") {
       toggleFocus();
@@ -513,9 +522,12 @@ function bindKeys() {
       $("help").showModal();
     }
   });
-  addEventListener("keyup", (e) => {
-    if (e.code === "Space" && flickerFrom) { setMode(flickerFrom); flickerFrom = null; }
-  });
+  const endFlicker = () => { if (flickerFrom) { setMode(flickerFrom); flickerFrom = null; } };
+  addEventListener("keyup", (e) => { if (e.code === "Space") endFlicker(); });
+  /* A Space released in another window never sends its keyup here, so leaving
+     the page ends the flicker too. */
+  addEventListener("blur", endFlicker);
+  document.addEventListener("visibilitychange", endFlicker);
 }
 
 /* ------------------------------ harness seam ------------------------------ */
@@ -550,6 +562,8 @@ window.state = state;
 
 loadSettings();
 state.settings = currentSettings();
+// From here on, a pin the browser cannot honour is a plan change like any other.
+setPlanChangedHandler(pushSettings);
 bindTheme();
 bindPanels();
 bindIntake();
@@ -579,7 +593,7 @@ function track(event, props) {
 function inputFormat(it) {
   const t = (it.file && it.file.type) || "";
   if (/^image\/[a-z0-9.+-]{1,30}$/i.test(t)) return t.toLowerCase();
-  const ext = splitName(it.name).ext.replace(/^\./, "").toLowerCase();
+  const ext = splitName(it.sourceName || it.name).ext.replace(/^\./, "").toLowerCase();
   return /^[a-z0-9]{1,5}$/.test(ext) ? ext : "unknown";
 }
 
@@ -596,15 +610,16 @@ function savedShape(kind, items) {
 }
 
 /* One event per finished run, over the results that run produced. A result is
-   reported once: a later run (a settings change redoing everything) reports
-   its own fresh results. */
+   reported once, and so is a failure: a later run (a settings change redoing
+   everything, a retry that fails again) reports its own. */
 const reported = new WeakSet();
 function reportRun() {
   const fresh = state.items.filter((it) => isReady(it) && it.result && !reported.has(it.result));
-  const failed = state.items.filter((it) => it.status === "failed" && !reported.has(it));
+  const failed = state.items.filter((it) => it.status === "failed" && it.failure
+    && !reported.has(it.failure));
   if (!fresh.length && !failed.length) return;
   for (const it of fresh) reported.add(it.result);
-  for (const it of failed) reported.add(it);
+  for (const it of failed) reported.add(it.failure);
   let input = 0, output = 0, resized = 0, missed = 0, work = 0;
   for (const it of fresh) {
     input += it.originalBytes || 0;

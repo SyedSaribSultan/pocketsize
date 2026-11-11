@@ -58,6 +58,11 @@ export const state = {
      means that image is. A second "opened" flag was tried and was two names for
      one idea - the only thing it bought was a way for the two to disagree. */
   selected: null,
+
+  /* The download button's own moment: "zipping" while the archive is built,
+     "saved" for the beat after, null otherwise. The renderer reads it, so a
+     repaint mid-zip cannot re-enable the button or erase what it says. */
+  zip: null,
 };
 
 export const DEFAULT_DIMENSION = D.DESTINATION_NUMBERS[D.DEFAULT_DESTINATION].maxDimension;
@@ -95,19 +100,6 @@ export function firstInteresting() {
   return state.items.find(isReady) || state.items[0] || null;
 }
 
-
-/** What the engine is actually run with for one image: the plan, plus whatever
- *  that image overrides. All three of a destination's numbers can be overridden
- *  for one image, which is the shape the override always implied. */
-export function effectiveSettings(item) {
-  const s = { ...state.settings };
-  if (item.override) {
-    if (item.override.formats) { s.formats = item.override.formats; s.target = "web"; }
-    if (item.override.qualityTarget != null) s.qualityTarget = item.override.qualityTarget;
-    if (item.override.maxDimension != null) s.maxDimension = item.override.maxDimension;
-  }
-  return s;
-}
 
 /** Batch totals, over everything that has a result. */
 export function totals() {
