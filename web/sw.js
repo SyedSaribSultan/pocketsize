@@ -142,10 +142,27 @@ self.addEventListener("install", (e) => {
   })());
 });
 
+/* The codecs and faces only ever change under new filenames, so a copy from
+ * an older heavy cache is still the right copy. Carried over before the old
+ * cache goes: a tab already open offline would otherwise lose an encoder this
+ * install has not finished downloading (the deferred AVIF) until a reload. */
+const HEAVY_KEEP = new Set([...HEAVY_PRECACHE, ...HEAVY_DEFERRED]);
+
 self.addEventListener("activate", (e) => {
   e.waitUntil((async () => {
+    const heavy = await caches.open(HEAVY);
     for (const key of await caches.keys()) {
-      if (key !== SHELL && key !== HEAVY) await caches.delete(key);
+      if (key === SHELL || key === HEAVY) continue;
+      if (key.startsWith("pocketsize-heavy-")) {
+        const old = await caches.open(key);
+        for (const req of await old.keys()) {
+          const path = new URL(req.url).pathname;
+          if (!HEAVY_KEEP.has(path) || await heavy.match(req)) continue;
+          const res = await old.match(req);
+          if (res) await heavy.put(req, res);
+        }
+      }
+      await caches.delete(key);
     }
     await self.clients.claim();
   })());
