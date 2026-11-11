@@ -60,7 +60,8 @@ production by being invisible under a server that sent none.
 
 `tests/web/` also holds a probe per concern - `probe_pool.mjs` (how many
 workers the machine is given), `probe_backpressure.mjs` (a large batch stays
-inside its memory window), `probe_flow.mjs`, `probe_presets.mjs`,
+inside its memory window), `probe_lifecycle.mjs` (every way an item, a
+worker or a run ends shows what is true), `probe_flow.mjs`, `probe_presets.mjs`,
 `probe_theme.mjs` and others. They assert on real app state through
 `window.imgc`, so copy and ordering changes update assertions rather than
 deleting them.

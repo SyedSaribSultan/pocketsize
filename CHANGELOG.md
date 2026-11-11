@@ -5,6 +5,33 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- **Every item, worker and run now ends in a state that is true.** Stop or
+  Clear pressed mid-dispatch no longer lets stopped pictures start anyway
+  (the queue walk no longer awaits, so it never acts on a stale view). A
+  worker that dies without an error, or says nothing about its job for three
+  minutes, is replaced and its picture fails with a Retry instead of
+  "working" forever; a crashed worker is replaced rather than reused.
+  Removing a picture mid-run tells its worker to stop, and a worker is never
+  handed a second job while still on its first. A run ends however its last
+  picture ends, so the "Done" receipt and the completion event fire even
+  when the last one failed before any worker replied, and the next run's
+  duration is its own. A retry that fails again is reported again. The zip
+  only marks as downloaded the pictures whose file is in it, and a repaint
+  mid-zip keeps "Zipping..." and the disabled button. Clear's Undo survives
+  a later toast and a held toast (previews are released only once Undo is
+  gone), and undone pictures that were stopped run again. A format pin the
+  browser turns out not to support is a real plan change (new revision,
+  saved, re-run). A codec that failed to download is retried later instead
+  of switching its format off for good, and one worker's failure no longer
+  switches it off for the whole app. Aborts are honoured inside the size-cap
+  search and the colour and oxipng passes. The heavy codec cache is carried
+  across service-worker updates. Smaller: the flicker ends when the window
+  loses focus, a heatmap is built once and never painted for the wrong
+  picture, hints count as seen when shown, the report keeps each file's
+  original name after a rename, the capability probe is asked once, and the
+  never-set per-image override path is removed.
+
 ### Changed
 - **Full syedsarib.com analytics (owner decision, 2026-11-06).**
   `web/js/analytics.js` now loads the shared add-on
