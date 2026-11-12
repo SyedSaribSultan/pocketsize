@@ -143,7 +143,8 @@ async function measure(pg) {
       if (c.matches('input[type="checkbox"]') && c.closest("label")) c = c.closest("label");
       // A text input inside the system's field shell is measured as the shell,
       // which is the box a finger aims at.
-      if (c.matches(".s-field__input")) c = c.closest(".s-field");
+      // A select in a field shell fills the shell, so the shell is measured too.
+      if (c.matches(".s-field__input, .s-field--select > select")) c = c.closest(".s-field");
       const r = c.getBoundingClientRect();
       /* The system gives dense controls (segments, link buttons) an
          invisible 44 hit area as an absolutely placed ::after rather than
