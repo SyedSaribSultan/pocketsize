@@ -1392,7 +1392,7 @@ async function runJob(msg) {
         type: "done",
         result: {
           passthrough: true, skipped: true,
-          note: "animated — left exactly as it is",
+          note: "animated, left exactly as it is",
           fmt: "gif", ext: ".gif", mime: "image/gif",
           bytes: buffer, originalBytes, newBytes: originalBytes,
           level: null, score: null, metric: metric.name,
@@ -1460,9 +1460,9 @@ async function runJob(msg) {
       job.refCanvas.getContext("2d").putImageData(
         new ImageData(job.rgba, job.width, job.height), 0, 0);
       alpha = false;
-      alphaNote = `transparency flattened onto white — ${chosen} cannot store it`;
+      alphaNote = `transparency flattened onto white, as ${chosen} cannot store it`;
     } else {
-      alphaNote = `kept as PNG — ${chosen} cannot store transparency`;
+      alphaNote = `kept as PNG, as ${chosen} cannot store transparency`;
     }
   }
 
@@ -1542,7 +1542,7 @@ async function runJob(msg) {
     });
     if (names.length) {
       warnings.push(alphaNote ||
-        `${chosen} is not available in this browser — used the automatic set instead`);
+        `${chosen} is not available in this browser, so used the automatic set instead`);
       alphaNote = "";
     }
   }
@@ -1780,7 +1780,7 @@ async function runJob(msg) {
 
   if (best.score < target) {
     warnings.push(
-      `Couldn't get this close enough to your original — the best any format `
+      `Couldn't get this close enough to your original. The best any format `
       + `managed was ${metric.name === "ssim" ? best.score.toFixed(4) : Math.round(best.score)}`
       + `${metric.name === "ssim" ? "" : " out of 100"} against your target of `
       + `${target}. Lower the target, or keep the original.`);
@@ -1796,8 +1796,8 @@ async function runJob(msg) {
   if (missedSize) {
     const kb = (n) => `${(n / 1024).toFixed(n < 10240 ? 1 : 0)} KB`;
     warnings.push(
-      `Couldn't fit ${kb(cap)} without going below the quality you asked for — `
-      + `this is ${kb(shipping - cap)} over. Allow a lower quality, or a smaller frame.`);
+      `Couldn't fit ${kb(cap)} without going below the quality you asked for. `
+      + `This is ${kb(shipping - cap)} over. Allow a lower quality, or a smaller frame.`);
   }
 
   // Never ship a bigger file. (Stricter than the desktop rule: any regrowth
@@ -1809,7 +1809,7 @@ async function runJob(msg) {
       type: "done",
       result: {
         passthrough: true, skipped: true,
-        note: "already smaller than anything we could make — left as it is",
+        note: "already smaller than anything we could make, left as it is",
         fmt: best.encoder.name, ext: null, mime,
         bytes: buffer, originalBytes, newBytes: originalBytes,
         level: null, score: null, metric: metric.name,

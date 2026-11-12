@@ -20,7 +20,7 @@
 import { $, setText, show, toast } from "./dom.js";
 import { state, current, isReady } from "./state.js";
 import {
-  human, fmtLabel, splitName,
+  human, fmtLabel, splitName, overCapText,
 } from "./format.js";
 
 let mode = "split";
@@ -434,10 +434,11 @@ export function renderStage() {
         ? Math.round((1 - it.newBytes / it.originalBytes) * 100) : 0;
       const shrunk = it.outW && (it.outW !== it.width || it.outH !== it.height)
         ? ` · shrunk to ${it.outW}×${it.outH}` : "";
+      const over = overCapText(it) ? ` · ${overCapText(it)}` : "";
       /* Only the delta takes the success colour; the format and the
          disclosure stay in the line's own ink, the same size, in one read. */
       const delta = pct > 0 ? `−${pct}%` : "";
-      const rest = (pct > 0 ? ` · ${fmtLabel(it.fmt)}` : `no saving · ${fmtLabel(it.fmt)}`) + shrunk;
+      const rest = (pct > 0 ? ` · ${fmtLabel(it.fmt)}` : `no saving · ${fmtLabel(it.fmt)}`) + shrunk + over;
       const savedEl = $("s-saved");
       if (savedEl.textContent !== delta + rest) {
         if (delta) {

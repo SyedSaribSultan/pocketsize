@@ -142,11 +142,16 @@ try {
     const it = state.items[0];
     return { bytes: it.newBytes, score: it.score, missed: !!it.missedSize,
              warnings: it.warnings || [],
-             flagged: !document.getElementById("s-warn").hidden
-                      && document.getElementById("s-warn").classList.contains("missed") };
+             row: (document.querySelector(`.s-row[data-id="${it.id}"] .s-row__sub`) || {}).textContent || "",
+             stage: (document.getElementById("s-saved") || {}).textContent || "" };
   });
   console.log("  under an impossible cap:", JSON.stringify(missed));
   ok(missed.missed, "an unreachable cap is reported as missed");
+  ok(/KB over your 2.0 KB limit, to keep the quality you asked for/.test(missed.row),
+     `and the item's row says it, visibly (${JSON.stringify(missed.row)})`);
+  ok(missed.stage.includes("over your 2.0 KB limit"),
+     `and so does the result line (${JSON.stringify(missed.stage)})`);
+  ok(!/—|–/.test(missed.warnings.join("")), "and the warning has no em or en dash");
   ok(missed.bytes > 2048, "and ships the honest file rather than one that fits by being ruined");
   ok(missed.warnings.some((w) => /couldn't fit/i.test(w)),
      `and says so in words (${JSON.stringify(missed.warnings)})`);

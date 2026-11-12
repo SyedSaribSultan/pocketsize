@@ -12,7 +12,7 @@
 
 import { $, setText, show } from "./dom.js";
 import { state, isReady, isBusy, totals } from "./state.js";
-import { human, fmtLabel } from "./format.js";
+import { human, fmtLabel, overCapText } from "./format.js";
 import { takeDirtyItems } from "./render.js";
 
 /* id -> { el, and the children paintRow writes to }.
@@ -47,9 +47,10 @@ function subLine(it) {
       /* Pixels removed is said on the same line as the %, always. */
       const shrunk = it.outW && (it.outW !== it.width || it.outH !== it.height)
         ? " · shrunk" : "";
+      const over = overCapText(it) ? ` · ${overCapText(it)}` : "";
       const kept = it.status === "saved" ? " · downloaded" : "";
       return {
-        text: `${human(it.originalBytes)} → ${fmtLabel(it.fmt)} · ${saved}${shrunk}${kept}`,
+        text: `${human(it.originalBytes)} → ${fmtLabel(it.fmt)} · ${saved}${shrunk}${over}${kept}`,
         tone: pct > 0 ? "good" : "",
         /* Only the delta carries the status colour; the whole line never
            turns green. */
