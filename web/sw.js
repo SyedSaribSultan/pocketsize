@@ -20,7 +20,7 @@
 
 "use strict";
 
-const VERSION = "v26";
+const VERSION = "v27";
 const SHELL = `pocketsize-shell-${VERSION}`;
 const HEAVY = `pocketsize-heavy-${VERSION}`;
 
@@ -131,7 +131,14 @@ self.addEventListener("install", (e) => {
     for (const client of await self.clients.matchAll({ includeUncontrolled: true })) {
       client.postMessage({ type: "precached" });
     }
-    await self.skipWaiting();
+    /* A first install takes over at once: the page it serves came from the
+       same deploy. An UPDATE waits. Taking over an open tab would leave that
+       tab's old page code running against this worker's newer files without
+       anyone knowing, so the page shows "A new version is ready" and this
+       worker steps in only when that notice's Reload sends "skip-waiting" (or
+       once every tab on the old version has closed). Owner decision,
+       2026-11-12. */
+    if (!self.registration.active) await self.skipWaiting();
 
     /* Started, deliberately NOT awaited, and deliberately after skipWaiting -
        so the big codec downloads in the background while the app is already
@@ -140,6 +147,11 @@ self.addEventListener("install", (e) => {
        it, which is exactly the behaviour before any of this. */
     heavy.addAll(HEAVY_DEFERRED).catch(() => {});
   })());
+});
+
+/* The page's "Reload" on the update notice. */
+self.addEventListener("message", (e) => {
+  if (e.data && e.data.type === "skip-waiting") self.skipWaiting();
 });
 
 /* The codecs and faces only ever change under new filenames, so a copy from

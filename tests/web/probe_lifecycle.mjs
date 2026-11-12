@@ -197,12 +197,15 @@ try {
        gets the file, so no worker reply can end the run. */
     await pg.evaluate(() => imgc.holdWork(true));
     await uploadAndStart(pg, fx("bomb.png"));
-    await pg.waitForFunction(() => state.items[0].status === "failed", { timeout: 60_000, polling: 50 });
+    /* Since 2026-11-12 the guard refuses the file (a "rejected" row, owner
+       decision) rather than failing it: the run still has to end, and a
+       refused file is not a compression to report. */
+    await pg.waitForFunction(() => state.items[0].status === "rejected", { timeout: 60_000, polling: 50 });
     await pg.evaluate(() => imgc.holdWork(false));
     await wait(500);
     let runs = await completions(pg);
-    ok(runs.length === 1 && runs[0].failed_count === 1,
-       `a run whose only item failed is reported (${JSON.stringify(runs.map((r) => r.failed_count))})`);
+    ok(runs.length === 0,
+       `a run whose only file was refused reports no compression (${runs.length})`);
     await wait(3000);
     const t0 = Date.now();
     await uploadAndFinish(pg, fx("small.jpg"), 600_000);
@@ -210,7 +213,7 @@ try {
     const took = Date.now() - t0;
     runs = await completions(pg);
     const last = runs[runs.length - 1];
-    ok(runs.length === 2 && last.file_count === 1, `the next run is reported on its own (${runs.length})`);
+    ok(runs.length === 1 && last.file_count === 1, `the next run is reported on its own (${runs.length})`);
     ok(last && last.duration_ms <= took + 500,
        `and its duration is its own (${last && last.duration_ms} ms <= ${took} ms)`);
 
@@ -222,7 +225,7 @@ try {
       const it = state.items.find((i) => i.name === "corrupt.jpg");
       document.querySelector(`#queue-list [data-id="${it.id}"] .row-act.retry`).click();
     });
-    await pg.waitForFunction(() => state.items.every((i) => ["done", "failed", "saved"].includes(i.status)),
+    await pg.waitForFunction(() => state.items.every((i) => ["done", "failed", "saved", "rejected"].includes(i.status)),
       { timeout: 600_000, polling: 300 });
     await wait(500);
     runs = await completions(pg);
@@ -271,7 +274,7 @@ try {
     await pg.waitForSelector("#toast-action", { timeout: 5000 });
     await pg.evaluate(() => document.getElementById("toast-action").click());
     await pg.waitForFunction(() => state.items.length === 3 &&
-      state.items.every((i) => ["done", "failed", "saved"].includes(i.status)),
+      state.items.every((i) => ["done", "failed", "saved", "rejected"].includes(i.status)),
       { timeout: 180_000, polling: 300 }).catch(() => {});
     const s = await statuses(pg);
     ok(s.length === 3 && s.every((x) => x === "done"), `undone items that were stopped run again (${s.join(",")})`);

@@ -25,7 +25,7 @@ import {
 import {
   startEngine, dispatch, requeue, removeItems, cancelAll, setBatchEndHandler, pool,
   readingCount, readingPeakSeen, poolPlan, backgroundPlan,
-  holdWork, warmCodecs, warmAvif, batchStartedAtMs,
+  holdWork, warmCodecs, warmAvif, batchStartedAtMs, setMismatchHandler,
 } from "./engine.js";
 import { addFiles, filesFromDataTransfer, countItemWords } from "./intake.js";
 import { chooseCandidate } from "./views.js";
@@ -700,6 +700,8 @@ if ("serviceWorker" in navigator) {
        finishes warming, it is announced - exactly once. */
     const announce = () => hintOnce("offline",
       "Ready to work offline. This whole app now runs without internet.");
+    swReg = reg;
+    watchForUpdates(reg);
     if (navigator.serviceWorker.controller) return;   // already installed before
     const sw = reg.installing || reg.waiting;
     if (!sw) return;
@@ -737,6 +739,46 @@ if ("serviceWorker" in navigator) {
   // No offline layer to wait for - warm once the first paint is out the door.
   setTimeout(warmTheCodecs, 1000);
 }
+/* A new version, said and never imposed (owner decision, 2026-11-12). An update
+ * of the service worker waits (sw.js) instead of taking over this tab, and the
+ * tab says so: "A new version is ready", with Reload. Reload tells the waiting
+ * worker to take over, then reloads once it has, so the page and the files it
+ * loads come from the same deploy. A worker that installs while the tab is open
+ * is caught too, and an open tab asks for updates now and then, since only a
+ * navigation would otherwise check. */
+let updateOffered = false;
+let swReg = null;
+function offerUpdate(waiting) {
+  if (updateOffered) return;
+  updateOffered = true;
+  toastAside("A new version is ready", {
+    label: "Reload",
+    sticky: true,
+    onAction: () => {
+      const sw = navigator.serviceWorker;
+      if (!waiting || !sw?.controller) { location.reload(); return; }
+      sw.addEventListener("controllerchange", () => location.reload(), { once: true });
+      waiting.postMessage({ type: "skip-waiting" });
+    },
+  });
+}
+
+/* The engine met a worker from another deploy: the same offer, with the
+   waiting service worker if there is one. */
+setMismatchHandler(() => offerUpdate(swReg?.waiting || null));
+
+function watchForUpdates(reg) {
+  /* Only an UPDATE is offered: with no controller this is the first install,
+     which takes over by itself and is the same deploy as this page. */
+  const offer = (w) => { if (w && navigator.serviceWorker.controller) offerUpdate(w); };
+  if (reg.waiting) offer(reg.waiting);
+  reg.addEventListener("updatefound", () => {
+    const w = reg.installing;
+    w?.addEventListener("statechange", () => { if (w.state === "installed") offer(w); });
+  });
+  setInterval(() => { reg.update().catch(() => {}); }, 60 * 60 * 1000);
+}
+
 /* The AVIF encoder is compiled at idle rather than with the others: it is
  * bigger than everything else put together, and its download is already
  * handled by the service worker's deferred precache, so this only pays the

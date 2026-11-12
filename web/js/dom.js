@@ -127,7 +127,9 @@ function showNext() {
   // toast holds longer, because it is also a control.
   const words = message.trim().split(/\s+/).length;
   toastLeft = Math.max(2600, Math.min(9000, words * 340 + (action ? 2400 : 0)));
-  arm();
+  /* A sticky notice ("A new version is ready") has no clock: it stays until
+     its action or its close button is pressed. */
+  if (!action?.sticky) arm();
 }
 
 function arm() {

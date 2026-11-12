@@ -273,8 +273,11 @@ try {
     const overflows = r.width > box.width && r.height > box.height;
     // And the clamp: shoving the pan to infinity must not lose the image.
     imgc.setView({ pan: { x: 99999, y: 99999 } });
+    /* Measured against #view, the box the clamp keeps covered: #stage is the
+       card around it and is wider by its own padding. */
     const shoved = vp.getBoundingClientRect();
-    const stillCovers = shoved.left <= box.left + 1 && shoved.right >= box.right - 1;
+    const win = document.getElementById("view").getBoundingClientRect();
+    const stillCovers = shoved.left <= win.left + 1 && shoved.right >= win.right - 1;
     return { zoom: imgc.zoom(), before, after, overflows, stillCovers, pan: imgc.pan() };
   });
   console.log("  zoom:", JSON.stringify(zoomRes));

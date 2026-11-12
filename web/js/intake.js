@@ -11,7 +11,7 @@ import {
 } from "./state.js";
 import { SUPPORTED, SUPPORTED_MIME } from "./format.js";
 import {
-  beginBatch, dispatch, startEngine, failItem, settleBatch,
+  beginBatch, dispatch, startEngine, settleBatch,
 } from "./engine.js";
 import { renderQueue } from "./queue.js";
 import { renderStage } from "./compare.js";
@@ -75,8 +75,9 @@ function measure(item) {
 /** Refuse a decompression bomb before anything on this page decodes it.
  *
  *  The header is read first; only a file that is not declared too big gets its
- *  size measured and its thumbnail drawn. One that is fails with its size in
- *  the message, and its original is withdrawn from the stage. The worker runs
+ *  size measured and its thumbnail drawn. One that is is refused: its row says
+ *  "Too big to open here", the stage gives its size, and its original is
+ *  withdrawn. The worker runs
  *  the same check on its own copy, so whichever sees it first, the answer is
  *  the same.
  *
@@ -98,7 +99,7 @@ async function guardThenDraw(item) {
   }
   if (item.beforeURL) URL.revokeObjectURL(item.beforeURL);
   item.beforeURL = null;
-  if (item.status === "queued") failItem(item, tooBig);
+  if (item.status === "queued") rejectItem(item, TOO_BIG, tooBig);
   scheduleRender();
   settleBatch();
 }
@@ -114,22 +115,36 @@ export function countItemWords(items) {
   return countWords(items.length);
 }
 
+/* A file this page cannot compress still gets a row (owner decision,
+   2026-11-12): the row says why in a few plain words, its only action is
+   Remove, and it never holds up the files beside it. The longer sentence is
+   what the stage says when the row is opened. */
+const NOT_AN_IMAGE = "Can't compress this file type";
+const NOT_AN_IMAGE_LONG = "Can't compress this file type. Pocketsize takes PNG, JPEG, "
+  + "WebP, AVIF, GIF, BMP and TIFF.";
+const TOO_BIG = "Too big to open here";
+
+/** Put an item in the queue as refused: never read, never dispatched, never
+ *  part of a run. */
+export function rejectItem(item, reason, sentence) {
+  item.status = "rejected";
+  item.reason = reason;
+  item.error = sentence || reason;
+  item.read = null;
+}
+
 export function addFiles(files) {
-  const usable = [...files].filter(
+  const all = [...files];
+  if (!all.length) return;
+  const usable = all.filter(
     (f) => SUPPORTED.test(f.name) || SUPPORTED_MIME.has(f.type));
-  if (!usable.length) {
-    // What happened, then what to do about it. "Unsupported" on its own leaves
-    // someone guessing which of their files was the problem and what would work.
-    toast("Those file types aren't supported. Try PNG, JPEG, WebP, AVIF, GIF, "
-      + "BMP or TIFF.", null, "warning");
-    return;
-  }
 
   startEngine();
   const firstEver = state.items.length === 0;
   let images = 0;
 
-  for (const file of usable) {
+  for (const file of all) {
+    const ok = usable.includes(file);
     const item = {
       id: uid(),
       name: file.name || "pasted image.png",
@@ -139,23 +154,26 @@ export function addFiles(files) {
       file,
       originalBytes: file.size,
       status: "queued",
-      beforeURL: URL.createObjectURL(file),
+      beforeURL: ok ? URL.createObjectURL(file) : null,
       thumbURL: null,
       afterURL: null,
       warnings: [], candidates: [],
       width: 0, height: 0, outW: 0, outH: 0,
       frac: 0,
-      headerChecked: false,
+      headerChecked: !ok,
     };
+    if (!ok) rejectItem(item, NOT_AN_IMAGE, NOT_AN_IMAGE_LONG);
     state.items.push(item);
     state.byId.set(item.id, item);
+    if (!ok) continue;
     if (!state.selected) select(item.id);
     images += 1;
     guardThenDraw(item);
   }
+  if (!state.selected) select(state.items[0]?.id);
 
-  beginBatch();
-  if (!firstEver) toast(`Added ${countWords(images)}`);
+  if (images) beginBatch();
+  if (!firstEver && images) toast(`Added ${countWords(images)}`);
 
   /* The first frame belongs to the file, untouched. These render synchronously
      rather than being scheduled, so the original's src is in the document

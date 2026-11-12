@@ -24,6 +24,6 @@ export async function uploadAndFinish(pg, files, timeout = 1_800_000) {
   await uploadAndStart(pg, files);
   await pg.waitForFunction(
     (n) => state.items.length >= n &&
-           state.items.every((i) => ["done", "failed", "saved"].includes(i.status)),
+           state.items.every((i) => ["done", "failed", "saved", "rejected"].includes(i.status)),
     { timeout, polling: 300 }, files.length);
 }

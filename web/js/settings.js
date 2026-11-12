@@ -449,6 +449,15 @@ export function loadSettings() {
   renderFormatOptions();
   $("plan-format").value = pin;
   state.settings.formats = pin && $("plan-format").value === pin ? [pin] : null;
+  /* A plan edited on one page carries to every page (owner decision,
+     2026-11-12), so a pin can arrive at a destination that refuses it - a
+     WebP pin from /compress-webp landing on the email page. It is dropped,
+     and the reason is said once, here, rather than the pin vanishing. */
+  if (pin && !state.settings.formats) {
+    const where = D.DESTINATION_NUMBERS[$("target").value]?.label || "This destination";
+    toastAside(`${where} can't take ${FORMAT_CHOICE_LABEL[pin] || fmtLabel(pin)}, `
+      + "so the file type is back to automatic.");
+  }
 
   /* qualityTarget is ALREADY on the 0-100 scale. An earlier version scaled it
      here as if it were a fraction, which turned a floor of 90 into 99 and ran

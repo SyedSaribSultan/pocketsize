@@ -372,7 +372,8 @@ export function renderStage() {
   show($("stage-choose"), !state.items.length);
   show($("view"), !!it);
   show($("split"), !!it && mode === "split");
-  show($("mode-badge"), !!it && mode !== "split" && it.status !== "failed");
+  const refused = !!it && (it.status === "failed" || it.status === "rejected");
+  show($("mode-badge"), !!it && mode !== "split" && !refused);
   show($("stage-work"), !!(working || (it && it.stale)));
   // The bottom bar is about a result, so it goes away rather than showing
   // dashes where numbers will later be.
@@ -384,14 +385,14 @@ export function renderStage() {
     return;
   }
 
-  if (it.status === "failed") {
+  if (refused) {
     show($("view"), false);
     show($("mode-badge"), false);
     show($("stage-hero"), true);
     show($("stage-empty"), true);
     show($("stage-choose"), false);
-    setText($("stage-empty"),
-      `Could not compress this image: ${it.error || "unknown reason"}.`);
+    setText($("stage-empty"), it.status === "rejected" ? it.error
+      : `Could not compress this image: ${it.error || "unknown reason"}.`);
     return;
   }
 

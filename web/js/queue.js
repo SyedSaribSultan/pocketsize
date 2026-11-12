@@ -36,6 +36,8 @@ function subLine(it) {
       };
     case "failed":
       return { text: it.error || "failed", tone: "bad" };
+    case "rejected":
+      return { text: it.reason || it.error, tone: "bad" };
     case "cancelled":
       return { text: "stopped", tone: "" };
     default: {
@@ -144,6 +146,9 @@ function paintRow(row, it) {
   if (el.title !== it.name) el.title = it.name;
 
   show(row.retry, it.status === "failed");
+  /* A refused file has no thumbnail coming, so the skeleton stops saying
+     "coming". */
+  if (it.status === "rejected") row.thumb.classList.remove("s-skeleton");
   setText(row.now, isReady(it) ? human(it.newBytes) : "");
 
   const sub = subLine(it);
@@ -233,7 +238,7 @@ function renderBatch() {
   }
   let done = 0;
   for (const it of state.items) {
-    if (isReady(it) || it.status === "failed" || it.status === "cancelled") done += 1;
+    if (isReady(it) || ["failed", "cancelled", "rejected"].includes(it.status)) done += 1;
     else if (it.status === "working") done += it.frac || 0;
   }
   const frac = done / n;
@@ -257,11 +262,13 @@ function renderFoot() {
   setText($("t-saved"), t.saved ? `−${pct}% · ${human(t.saved)} saved` : "");
 
   const failed = state.items.filter((i) => i.status === "failed").length;
+  /* Refused files say why on their own rows; they are not part of the count. */
+  const counted = state.items.filter((i) => i.status !== "rejected").length;
   const working = state.items.filter(isBusy).length;
   const parts = [];
   /* Mid-run, progress is one quantity, not three: "4 of 6 done" answers the
      only question a wait asks. The breakdown returns when the run settles. */
-  if (working) parts.push(`${t.ready + failed} of ${state.items.length} done`);
+  if (working) parts.push(`${t.ready + failed} of ${counted} done`);
   else if (t.ready) parts.push(`${t.ready} ready`);
   if (failed) parts.push(`${failed} failed`);
   setText($("t-count"), parts.join(" · "));

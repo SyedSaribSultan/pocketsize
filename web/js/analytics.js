@@ -57,17 +57,10 @@
     },
     loaded: function (ph) {
       ph.register({ site: "pocketsize" });
-      // Personal links: ?via=<name> names this visitor, then leaves the URL clean.
-      try {
-        var u = new URL(location.href), via = (u.searchParams.get("via") || "").trim().toLowerCase().slice(0, 60);
-        if (via) {
-          if (ph.get_property("$user_state") !== "identified") ph.identify("via:" + via, { name: via, via: via });
-          else ph.setPersonProperties({ via: via });
-          ph.capture("via_link_opened", { via: via });
-          u.searchParams.delete("via");
-          history.replaceState(history.state, "", u.pathname + (u.search || "") + u.hash);
-        }
-      } catch (e) {}
+      /* Personal links (?via=<name>) are handled by the add-on below, which
+         names each browser on its own (analytics TRACKING.md). This page must
+         not handle ?via itself: identifying as "via:<name>" merged everyone
+         who opened one link into one person. */
       // Add-on (analytics TRACKING.md): device, network, human and time-on-page signals, from one shared file.
       try {
         window.posthog = ph;

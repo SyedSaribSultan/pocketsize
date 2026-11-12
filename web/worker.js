@@ -25,6 +25,15 @@
  * to four decimal places across the validation corpus. */
 if (typeof importScripts === "function") importScripts("ss2.js");
 
+/* The message contract's version. js/engine.js carries the same number and
+ * sends it with every job; this file stamps it on every reply. A page and a
+ * worker from different deploys (an open tab, a worker fetched after a deploy)
+ * refuse each other's jobs safely instead of half-understanding them. Bump it
+ * in BOTH files whenever a message's shape changes; tests/test_worker_protocol
+ * holds them equal. */
+const PROTOCOL = 1;
+const OTHER_VERSION = "Pocketsize was updated. Reload the page to compress this one.";
+
 /* ------------------------------------------------------------------------- *
  * constants — ladders mirror encoders.py
  * ------------------------------------------------------------------------- */
@@ -1372,7 +1381,7 @@ async function runJob(msg) {
   const { id, name, buffer, mime, settings } = msg;
   CURRENT = { id, aborted: false };
   const originalBytes = buffer.byteLength;
-  const post = (extra, transfer) => postMessage({ id, rev: msg.rev, ...extra }, transfer || []);
+  const post = (extra, transfer) => postMessage({ id, rev: msg.rev, protocol: PROTOCOL, ...extra }, transfer || []);
   const warnings = [];
   const metric = metricFor(settings.metric);   // ss2 unless the caller opts out
 
@@ -1867,12 +1876,16 @@ function engineFlags() {
 onmessage = (e) => {
   const msg = e.data;
   if (msg.type === "job") {
+    if (msg.protocol !== PROTOCOL) {
+      postMessage({ id: msg.id, rev: msg.rev, protocol: PROTOCOL, type: "failed", error: OTHER_VERSION });
+      return;
+    }
     runJob(msg).catch((exc) => {
       if (exc && exc._aborted) {
-        postMessage({ id: msg.id, rev: msg.rev, type: "aborted" });
+        postMessage({ id: msg.id, rev: msg.rev, protocol: PROTOCOL, type: "aborted" });
         return;
       }
-      postMessage({ id: msg.id, rev: msg.rev, type: "failed", error: String(exc && exc.message || exc) });
+      postMessage({ id: msg.id, rev: msg.rev, protocol: PROTOCOL, type: "failed", error: String(exc && exc.message || exc) });
     }).finally(() => {
       // Finished jobs are not the current one: a late abort finds nothing.
       if (CURRENT && CURRENT.id === msg.id) CURRENT = null;

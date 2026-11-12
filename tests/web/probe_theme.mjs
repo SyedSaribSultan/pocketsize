@@ -6,8 +6,8 @@
  * button cycled dark/light/auto. All four of those subjects are gone: the browser
  * app no longer reads the old --app- token layer (that served only the
  * desktop app, and tests/web/verify_tokens.mjs checks it there), the plan is
- * labelled fields rather than a measured sentence, and there is no theme button -
- * the page follows the reader's own setting.
+ * labelled fields rather than a measured sentence, and the theme is light unless
+ * the reader picked dark (saved by the header button; the OS no longer decides).
  *
  * What survives is the part that was never about the token layer: in each scheme,
  * is anything unreadable, and does the page actually respond to the setting at all.
@@ -76,8 +76,14 @@ try {
     const errs = [];
     pg.on("console", (m) => { if (m.type() === "error") errs.push(m.text()); });
     pg.on("pageerror", (e) => errs.push(String(e)));
-    // The setting comes from the reader, so it is emulated rather than clicked.
-    await pg.emulateMediaFeatures([{ name: "prefers-color-scheme", value: scheme }]);
+    /* Every visit starts light whatever the OS says (a91d6f3); dark is the
+       reader's saved choice from the header button. So the scheme is set the
+       way the button leaves it, and the OS is emulated the OTHER way, which
+       also proves the OS setting no longer decides. */
+    await pg.emulateMediaFeatures([{ name: "prefers-color-scheme", value: scheme === "dark" ? "light" : "dark" }]);
+    await pg.evaluateOnNewDocument((s) => {
+      try { localStorage.setItem("imgc-theme", s); } catch { /* fine */ }
+    }, scheme);
     await pg.goto("http://127.0.0.1:8196/", { waitUntil: "networkidle0" });
 
     await uploadAndFinish(pg, [path.join(FIX, "photo.png"), path.join(FIX, "ui.png")], 900_000);

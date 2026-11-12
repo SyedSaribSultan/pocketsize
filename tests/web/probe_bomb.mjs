@@ -73,13 +73,16 @@ try {
 
   await uploadAndFinish(pg, [path.join(FIX, "bomb.png"), path.join(FIX, "small.jpg")], 600_000);
   const items = await pg.evaluate(() => state.items.map((i) => ({
-    name: i.name, status: i.status, error: i.error || "", thumb: !!i.thumbURL,
+    name: i.name, status: i.status, error: i.error || "", reason: i.reason || "", thumb: !!i.thumbURL,
     before: i.beforeURL,
   })));
   const bomb = items.find((i) => i.name === "bomb.png");
   const fine = items.find((i) => i.name === "small.jpg");
   ok(!crashed, "the tab survived");
-  ok(bomb && bomb.status === "failed", `the bomb failed (${bomb && bomb.status})`);
+  /* Refused at intake (owner decision 2026-11-12): a row of its own with a
+     short reason, Remove its only action. */
+  ok(bomb && bomb.status === "rejected", `the bomb was refused (${bomb && bomb.status})`);
+  ok(bomb && bomb.reason === "Too big to open here", `its row says why in a few words ("${bomb && bomb.reason}")`);
   ok(bomb && /too big/.test(bomb.error) && /20[,.\s  ]?000/.test(bomb.error)
      && /100 megapixels/.test(bomb.error),
      `and says why, with its size: "${bomb && bomb.error}"`);

@@ -21,6 +21,14 @@
  * Anything else is ignored rather than guessed at, so a worker from a newer
  * deploy can never be read as having finished.
  *
+ * Every job carries PROTOCOL and every reply about a job carries the worker's.
+ * A reply stamped with another number (or none) is from another deploy: its
+ * worker is retired, its picture and everything still queued fail with a
+ * "reload" reason, and the page offers the reload. Nothing waits on a worker
+ * that cannot be trusted to understand the job, and the silence watchdog
+ * still bounds the rest. Bump it here AND in worker.js when a message changes
+ * shape (tests/test_worker_protocol.py holds the two equal).
+ *
  * `rev` is the settings revision the job was sent under. A result that comes back
  * stamped with an older rev is stale - the plan moved while it was working - so it
  * is thrown away and re-queued rather than shown.
@@ -34,6 +42,14 @@ import { mimeFor, fmtLabel } from "./format.js";
 import { adoptCandidateBytes, autoView, applyView } from "./views.js";
 import { reflectFormatAvailability } from "./settings.js";
 import { scheduleRender } from "./render.js";
+
+export const PROTOCOL = 1;
+const OTHER_VERSION = "Pocketsize was updated. Reload the page to compress this one.";
+/* Set once a worker from another deploy has answered. From then on nothing is
+   handed to a worker: what is queued fails with the reason, at once. */
+let mismatched = false;
+let onMismatch = null;
+export function setMismatchHandler(fn) { onMismatch = fn; }
 
 /* One worker per core, less two for the main thread and the browser's own work.
  *
@@ -216,6 +232,21 @@ function checkSilence() {
   if (failed) { scheduleRender(); dispatch(); settleBatch(); }
 }
 
+/** A worker from another deploy answered. It is never trusted with this job
+ *  or another: it is retired, its picture fails with the reload reason, and
+ *  so does everything still queued (walkQueue). */
+function refuseWorker(slot, id) {
+  const item = state.byId.get(id);
+  retire(slot);
+  if (item && item.status === "working") {
+    if (item.stale || item.liveCandidates) clearResult(item);
+    failItem(item, OTHER_VERSION);
+  }
+  mismatched = true;
+  onMismatch?.();
+  scheduleRender(); dispatch(); settleBatch();
+}
+
 /** Mark an item failed. Every failure goes through here, so each one carries
  *  its own token and a retry that fails again is a new failure to report. */
 export function failItem(item, error) {
@@ -333,6 +364,12 @@ export function dispatch() {
 function walkQueue() {
   const queued = state.items.filter((i) => i.status === "queued");
   if (!queued.length) return;
+  if (mismatched) {
+    for (const item of queued) failItem(item, OTHER_VERSION);
+    scheduleRender();
+    settleBatch();
+    return;
+  }
   ensurePool(queued.length);
 
   /* Read ahead, but only far enough to keep the pool fed.
@@ -399,7 +436,7 @@ function walkQueue() {
     item.elapsedMs = null;
     scheduleRender("queue", item.id);
     slot.w.postMessage({
-      type: "job", id: item.id, rev: state.settingsRev,
+      type: "job", protocol: PROTOCOL, id: item.id, rev: state.settingsRev,
       name: item.name, buffer: read.buffer, mime: mimeFor(item.file),
       settings: { ...state.settings },
     }, [read.buffer]);
@@ -469,6 +506,7 @@ function onWorkerMessage(slot, msg) {
   if (msg.id == null || msg.id !== slot.itemId) return;
   const terminal = TERMINAL.has(msg.type);
   if (!terminal && msg.type !== "progress" && msg.type !== "candidate") return;
+  if (msg.protocol !== PROTOCOL) { refuseWorker(slot, msg.id); return; }
   slot.beat = performance.now();
   if (terminal) {
     slot.busy = false;
@@ -671,7 +709,9 @@ export function requeue(ids, opts = {}) {
   let any = false;
   for (const id of ids) {
     const item = state.byId.get(id);
-    if (!item) continue;
+    /* A refused file stays refused: no plan change or retry makes it one this
+       page can compress. */
+    if (!item || item.status === "rejected") continue;
     if (item.status === "working") {
       const slot = pool[item.slot];
       if (keep && slot && slot.itemId === item.id) {

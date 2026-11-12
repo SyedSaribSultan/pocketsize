@@ -5,7 +5,33 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (owner decisions, 2026-11-12)
+- **A plan edited on a use-case page carries over** to the home page and the
+  other pages, from the same stored settings. A carried file type pin the
+  destination refuses is dropped, and the page now says why ("Email can't
+  take WebP, so the file type is back to automatic.").
+- **Files that can't be compressed show in the queue.** A file of another
+  type, or one the size guard refuses, is a row with a short reason ("Can't
+  compress this file type", "Too big to open here"); Remove is its only
+  action, the stage gives the longer reason, and it never holds up the files
+  beside it. The "Those file types aren't supported" toast is gone.
+- **"A new version is ready", with Reload.** An updated service worker now
+  waits instead of taking over an open tab, and the tab shows the notice
+  until it is answered; Reload brings the new version in. The page and the
+  compression worker now carry a contract version (`PROTOCOL`, held equal by
+  `tests/test_worker_protocol.py`): a worker from another deploy is refused,
+  its pictures fail with "Reload the page" instead of being half understood,
+  and the same notice appears.
+- **Personal links are left to the shared add-on.** `analytics.js` no longer
+  handles `?via=`; `analytics.syedsarib.com/t/plus.js` names each browser
+  (analytics 192f1f6). The add-on and its CSP entries were already in place.
+
 ### Fixed
+- Two browser probes measured stale things: `probe_theme` emulated the OS
+  theme (the page starts light since a91d6f3; it now sets the saved choice),
+  and `probe_flow` checked the pan clamp against the stage card instead of
+  the view it clamps to.
+
 - **Every item, worker and run now ends in a state that is true.** Stop or
   Clear pressed mid-dispatch no longer lets stopped pictures start anyway
   (the queue walk no longer awaits, so it never acts on a stale view). A
