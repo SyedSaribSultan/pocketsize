@@ -275,15 +275,26 @@ export function toast(message, { tone, action, onAction, duration } = {}) {
   r.append(el);
   while (r.children.length > 3) r.firstElementChild.remove();
 
-  let timer = 0, left = duration ?? (action ? 8000 : 4000), started = Date.now();
+  let timer = 0, left = duration ?? (action ? 8000 : 4000), started = Date.now(), closed = false;
   const sticky = tone === "critical" && duration === undefined; // errors never auto-dismiss
-  const arm = () => { if (!sticky) { started = Date.now(); timer = setTimeout(dismiss, left); } };
-  const pause = () => { clearTimeout(timer); left -= Date.now() - started; };
-  el.addEventListener("mouseenter", pause);
-  el.addEventListener("focusin", pause);
-  el.addEventListener("mouseleave", arm);
-  el.addEventListener("focusout", (e) => { if (!el.contains(e.relatedTarget)) arm(); });
+  const arm = () => { if (!sticky && !closed) { started = Date.now(); timer = setTimeout(dismiss, left); } };
+  // Hover and focus each hold the timer; it pauses on the first hold and runs again when the last one ends,
+  // so pointer plus keyboard never subtract twice or leave two timers running.
+  const held = { hover: false, focus: false };
+  const hold = (k, on) => {
+    const was = held.hover || held.focus;
+    held[k] = on;
+    const now = held.hover || held.focus;
+    if (!was && now) { clearTimeout(timer); left -= Date.now() - started; }
+    else if (was && !now) arm();
+  };
+  el.addEventListener("mouseenter", () => hold("hover", true));
+  el.addEventListener("mouseleave", () => hold("hover", false));
+  el.addEventListener("focusin", () => hold("focus", true));
+  el.addEventListener("focusout", (e) => { if (!el.contains(e.relatedTarget)) hold("focus", false); });
   function dismiss() {
+    if (closed) return;
+    closed = true;
     clearTimeout(timer);
     el.setAttribute("data-closing", "");
     setTimeout(() => el.remove(), fast());
