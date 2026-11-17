@@ -5,6 +5,16 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed (owner decisions, 2026-11-17)
+- **Analytics asks first.** Until the visitor accepts in a consent bar,
+  PostHog is cookieless (memory persistence, no person profiles, no session
+  replay) and the shared add-on runs in consent mode (no IP lookup, no `?via`
+  naming); the same behaviour as syedsarib.com. "Accept" turns on the full
+  shared setup; the choice is stored in this site's localStorage and a
+  "Cookie choices" link at the end of the page reopens the bar.
+- **The add-on is the frozen `plus.v1.js` with Subresource Integrity**, so a
+  tampered shared file fails to run here instead of running everywhere.
+
 ### Changed (owner decisions, 2026-11-12)
 - **A plan edited on a use-case page carries over** to the home page and the
   other pages, from the same stored settings. A carried file type pin the
