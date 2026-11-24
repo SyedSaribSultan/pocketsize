@@ -37,7 +37,7 @@ const ONE_DP = new Intl.NumberFormat(LOCALE, {
  *  1 KB, one decimal above: "1.4 MB" is a size, "1.4 B" is noise - and it is
  *  "1,4 MB" for the majority of the world that writes it that way. */
 export function human(n) {
-  if (n == null || !isFinite(n)) return "n/a";
+  if (n == null || !isFinite(n)) return "None";
   const u = ["B", "KB", "MB", "GB"];
   let v = n, i = 0;
   while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
@@ -48,7 +48,7 @@ export function human(n) {
  *  milliseconds because "0.1 s" reads as a rounding artefact, and anything past
  *  a minute gets minutes because "83.4 s" does not. */
 export function duration(ms) {
-  if (ms == null || !isFinite(ms)) return "n/a";
+  if (ms == null || !isFinite(ms)) return "None";
   if (ms < 950) return `${WHOLE.format(Math.max(1, Math.round(ms)))} ms`;
   if (ms < 60000) {
     const s = ms / 1000;
@@ -130,7 +130,7 @@ export function splitName(name) {
  *  would claim a measurement that never ran. */
 export function scoreText(score, lossless) {
   if (lossless) return "identical";
-  if (score == null || !isFinite(score)) return "n/a";
+  if (score == null || !isFinite(score)) return "None";
   // The single most load-bearing number in the product, so it is written the
   // way the reader writes one: "90,5" is what most of the world means by 90.5,
   // and reading it as 905 would misstate the whole claim.

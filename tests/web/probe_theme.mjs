@@ -76,10 +76,10 @@ try {
     const errs = [];
     pg.on("console", (m) => { if (m.type() === "error") errs.push(m.text()); });
     pg.on("pageerror", (e) => errs.push(String(e)));
-    /* Every visit starts light whatever the OS says (a91d6f3); dark is the
-       reader's saved choice from the header button. So the scheme is set the
-       way the button leaves it, and the OS is emulated the OTHER way, which
-       also proves the OS setting no longer decides. */
+    /* Without a choice the page follows the OS; a saved choice from the header
+       button wins over it. So the scheme is set the way the button leaves it,
+       and the OS is emulated the OTHER way, which proves the saved choice
+       decides. */
     await pg.emulateMediaFeatures([{ name: "prefers-color-scheme", value: scheme === "dark" ? "light" : "dark" }]);
     await pg.evaluateOnNewDocument((s) => {
       try { localStorage.setItem("imgc-theme", s); } catch { /* fine */ }
