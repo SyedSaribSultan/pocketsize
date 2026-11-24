@@ -6,10 +6,12 @@
  * exactly the property wanted here - the work is two property reads.
  *
  * The token layer (sarib-tokens.css) flips its palette on data-theme="dark"
- * and treats everything else as light. Every visit starts in light, whatever
- * the OS theme; dark is a manual choice from the header button, saved in
- * localStorage. The stamp is always set, so the stylesheet never has an
- * unstamped state to style.
+ * and treats everything else as light. So the three states
+ * the header button offers - Light, Dark, Match my device - are resolved HERE:
+ * an explicit choice is stamped as itself, and "match my device" is stamped as
+ * whatever the OS currently answers, re-stamped live if that answer changes.
+ * The choice (the MODE) lives in localStorage; the stamp is always the
+ * resolved result, so the stylesheet never has an unstamped state to style.
  *
  * The header button that cycles the mode lives in main.js; it reads the mode
  * through window.__themeModeNow and calls window.__applyTheme after writing
@@ -19,23 +21,32 @@
 "use strict";
 
 (function () {
+  var media = matchMedia("(prefers-color-scheme: dark)");
+
   function mode() {
     // The in-memory choice wins: it is what makes the button work for this
     // visit even where storage is refused (private browsing).
     if (typeof window.__themeMode === "string") {
-      return window.__themeMode === "dark" ? "dark" : "light";
+      return window.__themeMode === "light" || window.__themeMode === "dark"
+        ? window.__themeMode : "";
     }
     try {
-      if (localStorage.getItem("imgc-theme") === "dark") return "dark";
-    } catch (e) { /* private browsing; fall through to light */ }
-    return "light";
+      var saved = localStorage.getItem("imgc-theme");
+      if (saved === "light" || saved === "dark") return saved;
+    } catch (e) { /* private browsing; fall through to the OS */ }
+    return "";
   }
 
   function apply() {
-    document.documentElement.dataset.theme = mode();
+    var chosen = mode();
+    document.documentElement.dataset.theme =
+      chosen || (media.matches ? "dark" : "light");
   }
 
   apply();
+  // Older engines only have addListener; both receive the same handler.
+  if (media.addEventListener) media.addEventListener("change", apply);
+  else if (media.addListener) media.addListener(apply);
 
   // The seams main.js drives: apply after the button writes a new mode, and
   // read the mode by the same rule rather than a second copy of it.
