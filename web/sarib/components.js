@@ -18,6 +18,8 @@
 //   data-s-tree             on role=tree: arrows, Enter/Space, expand/collapse
 //   data-s-seg              on a .s-seg group of aria-pressed buttons: single choice
 //   data-s-toggle           on a button: flips aria-pressed (chips)
+//   data-s-disclosure       on a .s-disclosure__trigger button: flips aria-expanded (v2.11); the CSS
+//                           hides the panel that follows. <details> needs no script.
 //   data-s-autogrow         on a textarea: grows to --s-field-max-h, marks .s-field[data-grown]
 //   toast(message, {tone, action, onAction, duration})
 //   data-s-amount           on a .s-amount (v2.4): live grouping, caret kept, figures that scale down
@@ -639,6 +641,8 @@ export function init() {
     }
     const tog = t.closest("[data-s-toggle][aria-pressed]");
     if (tog && !tog.disabled) { tog.setAttribute("aria-pressed", String(tog.getAttribute("aria-pressed") !== "true")); return; }
+    const disc = t.closest("[data-s-disclosure][aria-expanded]");
+    if (disc && !disc.disabled) { disc.setAttribute("aria-expanded", String(disc.getAttribute("aria-expanded") !== "true")); return; }
 
     const key = t.closest("[data-s-amount] .s-amount__key[data-key]");
     if (key && !key.disabled) { const root = key.closest("[data-s-amount]"); amount(root); amountPress(amounts.get(root), key.dataset.key); return; }
