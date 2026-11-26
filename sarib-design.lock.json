@@ -1,12 +1,12 @@
 {
   "name": "sarib-design",
-  "version": "2.11.2",
-  "source_commit": "ea59e73",
+  "version": "2.11.3",
+  "source_commit": "7344f81",
   "target": "web/sarib",
   "flutter": null,
   "files": {
-    "web/sarib/tokens.css": "55f8d04c4cc3552c7a9f829d2afeda55a16e0167591736454d4ab83c3767e68e",
-    "web/sarib/components.css": "80cdd6c48d4a77078c130b93015c238182ab5653aae6bda3cb259775a879d24a",
+    "web/sarib/tokens.css": "272f3af678bd8487370430897dbb90f26a8cb34ccb3ad5c49d74985734e4597f",
+    "web/sarib/components.css": "9d7c274c1c6b0e3ae4c67a5bef94326e20264fedebf20a436d477710de951ce9",
     "web/sarib/icons.css": "4aa9d6d0845ba9d3744ad2742c464882823a86754deec2995c8d47ab9cd0ea79",
     "web/sarib/components.js": "e08e48f217c7d38e63a6db8e440895006eb7569771c06e26fb03182634d5ac15",
     "web/sarib/fonts.css": "e31de9532369e59a464178c78d3a52dde257b008b5cb6c090edf1371ffb2f122",
