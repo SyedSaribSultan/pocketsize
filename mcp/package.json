@@ -1,0 +1,18 @@
+{
+  "name": "pocketsize-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local MCP server: Pocketsize's own compression engine, run in Node on your computer.",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": { "start": "node server.mjs", "test": "node --test test/server.test.mjs" },
+  "dependencies": {
+    "@jsquash/avif": "2.1.1",
+    "@jsquash/jpeg": "1.6.0",
+    "@jsquash/png": "3.1.1",
+    "@jsquash/webp": "1.5.0",
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "omggif": "1.0.10",
+    "zod": "4.6.7"
+  }
+}
